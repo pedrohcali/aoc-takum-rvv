@@ -1,6 +1,6 @@
 PYTHON ?= python3
 
-.PHONY: test reference demo artifacts verify paper
+.PHONY: test reference demo artifacts verify paper package
 
 test:
 	$(PYTHON) scripts/run_tests.py
@@ -19,3 +19,6 @@ verify: test reference artifacts
 paper:
 	mkdir -p output/pdf
 	tectonic --outdir output/pdf paper/phase1.tex
+
+package:
+	$(PYTHON) scripts/package_delivery.py

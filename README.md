@@ -71,6 +71,10 @@ concordância com a biblioteca original sem modificações. Consulte
 Para compilar o artigo, instale [Tectonic](https://tectonic-typesetting.github.io/)
 e execute `make paper` (a primeira compilação baixa os pacotes LaTeX).
 
+`make package` gera `output/entrega-1.zip` com os arquivos versionados. Antes de
+empacotar arquivos novos, adicione-os ao Git. O pacote inclui código, testes,
+documentação, resultados e PDF; não inclui o histórico Git ou o cache da referência.
+
 ## Modelo adotado
 
 Os cálculos internos usam `fractions.Fraction`: soma e produto são exatos antes

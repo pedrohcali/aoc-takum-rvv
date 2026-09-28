@@ -1,7 +1,6 @@
 """Command-line demo. Decimal strings enter the encoder without a float detour."""
 import argparse
 from dataclasses import asdict
-from fractions import Fraction
 import json
 from . import TakumALU, TakumFormat
 
@@ -50,7 +49,7 @@ def main(argv=None):
                 b = int(args.b, 0) if args.raw else fmt.encode(args.b)
                 result = TakumALU(args.width).execute(args.command, a, b)
                 output = {"a": describe(fmt, a), "b": describe(fmt, b),
-                          "exact_result_of_quantized_inputs": str(result.exact),
+                          "exact_result_of_quantized_inputs": "NaR" if result.exact is None else str(result.exact),
                           "result": describe(fmt, result.bits),
                           "status": asdict(result.rounded)}
     except (ValueError, ZeroDivisionError) as error:

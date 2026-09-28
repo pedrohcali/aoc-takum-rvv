@@ -16,6 +16,7 @@ class CLITests(unittest.TestCase):
         self.assertEqual(self.run_cli("encode", "1.5")["hex"], "0x44")
         self.assertEqual(self.run_cli("decode", "0x44")["value"], "3/2")
         self.assertEqual(self.run_cli("add", "--raw", "0x40", "0x40")["result"]["value"], "2")
+        self.assertEqual(self.run_cli("add", "NaR", "1")["exact_result_of_quantized_inputs"], "NaR")
 
     def test_demo_all_widths(self):
         output = self.run_cli("demo")

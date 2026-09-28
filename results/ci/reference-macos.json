@@ -1,0 +1,107 @@
+{
+  "reference": "https://github.com/takum-arithmetic/libtakum.git",
+  "revision": "776ac0ca7855f640100731ed8bbb0c7cf83b2d94",
+  "seed": 20260928,
+  "samples_per_large_width": 20000,
+  "generated_at_utc": "2026-09-28T17:54:09.948394+00:00",
+  "python": "3.13.15",
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "duration_seconds": 8.432,
+  "groups": [
+    {
+      "kind": "decode",
+      "width": 8,
+      "cases": 256,
+      "mismatches": 0
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "cases": 20261,
+      "mismatches": 0
+    },
+    {
+      "kind": "add",
+      "width": 8,
+      "cases": 65536,
+      "mismatches": 0
+    },
+    {
+      "kind": "sub",
+      "width": 8,
+      "cases": 65536,
+      "mismatches": 0
+    },
+    {
+      "kind": "mul",
+      "width": 8,
+      "cases": 65536,
+      "mismatches": 0
+    },
+    {
+      "kind": "decode",
+      "width": 16,
+      "cases": 65536,
+      "mismatches": 0
+    },
+    {
+      "kind": "encode",
+      "width": 16,
+      "cases": 85541,
+      "mismatches": 0
+    },
+    {
+      "kind": "add",
+      "width": 16,
+      "cases": 20064,
+      "mismatches": 0
+    },
+    {
+      "kind": "sub",
+      "width": 16,
+      "cases": 20064,
+      "mismatches": 0
+    },
+    {
+      "kind": "mul",
+      "width": 16,
+      "cases": 20064,
+      "mismatches": 0
+    },
+    {
+      "kind": "decode",
+      "width": 32,
+      "cases": 20101,
+      "mismatches": 0
+    },
+    {
+      "kind": "encode",
+      "width": 32,
+      "cases": 40106,
+      "mismatches": 0
+    },
+    {
+      "kind": "add",
+      "width": 32,
+      "cases": 20064,
+      "mismatches": 0
+    },
+    {
+      "kind": "sub",
+      "width": 32,
+      "cases": 20064,
+      "mismatches": 0
+    },
+    {
+      "kind": "mul",
+      "width": 32,
+      "cases": 20064,
+      "mismatches": 0
+    }
+  ],
+  "total_cases": 548793,
+  "total_mismatches": 0,
+  "first_mismatches": [],
+  "reference_mode": "portable",
+  "patch_sha256": "de02ff67cd17d75d84849125e2e073a6516ce5647780a2ae5afe6c9b7746ef13"
+}

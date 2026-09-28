@@ -1,0 +1,312 @@
+\documentclass[conference,a4paper]{IEEEtran}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+\newcommand{\NaR}{\mathrm{NaR}}
+\newcommand{\code}[1]{\texttt{#1}}
+\title{An Exact Functional Model of Linear Takum Arithmetic\\for a RISC-V Vector Extension: Phase I}
+\author{\IEEEauthorblockN{Pedro Lima and Arthur Fernandes}
+\IEEEauthorblockA{Department of Electronic Engineering\\
+Universidade Federal de Minas Gerais, Belo Horizonte, Brazil\\
+Architecture and Computer Organization --- 2026/2}}
+\begin{document}
+\maketitle
+\begin{abstract}
+This report presents the first milestone of a project on Takum arithmetic for a
+simplified RISC-V vector extension. We implement a scalar functional model of
+linear Takum at 8, 16, and 32 bits, including field extraction, encoding,
+decoding, width conversion, addition, subtraction, and multiplication. Exact
+rational intermediates separate arithmetic correctness from host floating-point
+precision. The rounding policy is explicitly defined as nearest/even on the
+encoded bit stream, with saturation for finite values outside the representable
+range. Validation combines exhaustive T8 arithmetic against an independent
+boundary-table oracle, exhaustive T8/T16 round trips, and differential testing
+against a pinned C reference implementation with a documented portability
+correction. The local runs pass 20 tests and 548,793 differential comparisons.
+This milestone establishes an arithmetic foundation; vector execution and
+comparative sparse linear-algebra experiments remain future work.
+\end{abstract}
+\begin{IEEEkeywords}
+Takum, tapered precision, computer arithmetic, functional simulation, RISC-V
+\end{IEEEkeywords}
+
+\section{Introduction}
+Low-precision arithmetic requires explicit choices about dynamic range,
+precision, exceptional values, and rounding. These choices affect both numerical
+results and the architecture exposed to software. The AOC project proposes
+studying a uniform family of Takum operands within a simplified vector model.
+Its first milestone comprises the numerical representation and basic arithmetic;
+the subsequent milestones introduce vector instructions and experimental
+comparison with other number formats.
+
+We select the \emph{linear} Takum variant. Hunhold's original work distinguishes
+linear and logarithmic interpretations of a shared field structure~\cite{takum}.
+The SIMD case study explicitly considers linear Takum in its dynamic-range
+comparison~\cite{simd}. Because the course guidelines do not select a variant,
+we state this choice throughout the implementation and documentation.
+
+The contribution of this milestone is an inspectable arithmetic module that
+implements the fields directly, together with reproducible evidence for its
+behavior. The reference C library is used only in external tests. This report
+makes no claim about processor speedup, silicon area, power consumption, or
+numerical superiority over IEEE formats.
+
+\section{Related Work}
+Hunhold defines the Takum encoding and analyzes its properties, including
+monotonicity and two's-complement negation. Definition 8 specifies the linear
+variant; Algorithms 4 and 5 connect its fields to a conventional binary
+floating-point representation~\cite{takum}. Those definitions provide the
+mathematical basis for our codec.
+
+The later SIMD study motivates a consistent operand family across precisions
+and evaluates possible changes to AVX10.2~\cite{simd}. Its architectural
+conclusions motivate investigation in other instruction sets; they do not
+establish corresponding RISC-V performance results for this project.
+
+The public \code{libtakum} C99 library provides a separately implemented
+reference~\cite{libtakum}. Version 2.0.0 uses \code{takum8}, \code{takum16}, and
+\code{takum32} for linear types. We pin a specific revision and preserve a
+portability patch and both the original and corrected validation results.
+
+\section{Representation and Numerical Contract}
+\subsection{Field decoding}
+An encoding contains a sign bit $S$, a direction bit $D$, three regime bits
+interpreted as $R$, $r$ characteristic bits interpreted as $C$, and $p$ fraction
+bits interpreted as $F$. The characteristic width is
+\begin{equation}
+ r=\begin{cases}R,&D=1,\\7-R,&D=0.\end{cases}
+\end{equation}
+The characteristic and exponent are
+\begin{align}
+ c&=\begin{cases}2^r-1+C,&D=1,\\1-2^{r+1}+C,&D=0,\end{cases}\\
+ e&=(1-2S)(c+S).
+\end{align}
+When all characteristic bits are stored, $p=n-5-r$ and $f=F2^{-p}$. A finite,
+nonzero value is
+\begin{equation}
+ x=\bigl[(1-3S)+f\bigr]2^e.
+\end{equation}
+For short encodings that end inside $C$, missing characteristic bits are
+interpreted as trailing zeros, or \emph{ghost bits}. The software reports the
+number of inserted zeros. There is no stored fraction in these cases.
+
+All-zero bits encode zero. The sign bit followed by zeros encodes $\NaR$.
+Table~\ref{tab:examples} gives selected T8 examples. The full 256-entry table is
+exported as a CSV file. Negation is two's complement modulo $2^n$; zero and
+$\NaR$ remain unchanged.
+
+\begin{table}[t]
+\caption{Selected linear T8 representations}
+\label{tab:examples}
+\centering
+\begin{tabular}{lll}
+\toprule
+Hex & Binary & Exact value\\
+\midrule
+\code{00} & \code{00000000} & $0$\\
+\code{01} & \code{00000001} & $2^{-239}$\\
+\code{40} & \code{01000000} & $1$\\
+\code{44} & \code{01000100} & $3/2$\\
+\code{48} & \code{01001000} & $2$\\
+\code{7f} & \code{01111111} & $2^{239}$\\
+\code{80} & \code{10000000} & $\NaR$\\
+\code{c0} & \code{11000000} & $-1$\\
+\code{ff} & \code{11111111} & $-2^{-239}$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Encoding and rounding}
+Finite inputs are represented as exact fractions. The encoder computes the
+binary exponent from integer bit lengths and an exact comparison, constructs
+$D$, $R$, and $C$, and quantizes the remaining bit stream. Positive magnitude is
+encoded first; negative values then use two's-complement negation.
+
+We adopt nearest/even rounding of the bit stream, following the implementation
+policy in \code{libtakum} 2.0.0. This is an explicit project decision: the original
+paper's Algorithm 1 increments based on the first discarded bit and does not
+specify this tie-to-even refinement. Tests distinguish exact ties from values
+arbitrarily close to them using rational remainders.
+
+When truncation reaches the characteristic, bit-stream rounding need not select
+the closest real value. For example, adjacent T8 codes \code{60} and \code{61}
+represent $2^{15}$ and $2^{17}$. Their encoding threshold is $2^{16}$, whereas
+the arithmetic midpoint of their values is $81920$. This difference is part of
+the selected numerical contract and is tested explicitly.
+
+Finite nonzero values below the minimum magnitude saturate to the minimum
+nonzero magnitude, preserving sign. Values above the maximum magnitude saturate
+to the corresponding finite maximum. Thus finite saturation produces neither
+zero nor $\NaR$. The exact value zero remains zero. Nonfinite external inputs map
+to $\NaR$, which propagates through all three arithmetic operations, including
+multiplication by zero.
+
+\section{Methodology and Proposed Architecture}
+\subsection{Functional organization}
+The implementation uses Python 3.10 or newer and only the standard library.
+The arithmetic path is illustrated in Fig.~\ref{fig:architecture}. The codec
+and ALU expose raw unsigned bit patterns at their interfaces; exact fractions
+are internal values. The CLI additionally accepts decimal strings or fractions,
+which avoids an unintended conversion through binary64.
+
+\begin{figure}[t]
+\centering
+\fbox{\begin{minipage}{0.85\columnwidth}
+\centering
+T8 / T16 / T32 operand bits\\[3pt]
+$\downarrow$\\[3pt]
+Decode S, D, R, C, F and special values\\[3pt]
+$\downarrow$\\[3pt]
+Exact rational add / subtract / multiply\\[3pt]
+$\downarrow$\\[3pt]
+One output rounding and saturation\\[3pt]
+$\downarrow$\\[3pt]
+Result bits and diagnostic metadata
+\end{minipage}}
+\caption{Scalar arithmetic path implemented in phase I. The blocks describe
+functional responsibilities, not hardware stages or cycle latency.}
+\label{fig:architecture}
+\end{figure}
+
+The \code{TakumFormat} interface provides field extraction, encoding, decoding,
+negation, and conversion between widths. The \code{TakumALU} interface applies
+addition, subtraction, or multiplication to decoded operands and rounds the
+exact result once. Successive operations each round their own output; no fused
+operation or enlarged dot-product accumulator is implemented in this milestone.
+
+Status metadata records inexact results, saturation below or above the
+representable magnitude range, and $\NaR$. These are program diagnostics and
+are not defined as RISC-V architectural CSRs. No pipeline, memory hierarchy,
+vector register file, or instruction decoder is modeled yet.
+
+\subsection{Verification strategy}
+The first layer uses known bit patterns, round-trip checks, special-value
+propagation, arithmetic identities, regime boundaries, width conversion, and CLI
+tests. Every T8 and T16 encoding is decoded and re-encoded. T32 includes 10,000
+seeded round-trip samples and additional boundary patterns.
+
+The second layer supplies an independent exhaustive T8 oracle. It decodes
+fields using a string-based implementation of the defining equations, enumerates
+T9 codes at the rounding boundaries, and searches that ordered table. This
+algorithm differs from constructing an encoding from an input exponent. It
+checks all $256^2$ operand pairs for each of the three operations, including
+$\NaR$, using exact rational arithmetic throughout.
+
+The third layer compares with the pinned C reference. All T8/T16 patterns and
+20,101 T32 patterns are checked for decoding. Encoding cases include decoded
+values, 20,000 seeded binary floating-point inputs per width, and nonfinite or
+zero inputs. Arithmetic is exhaustive in T8 and uses 20,000 random pairs plus
+64 special/boundary pairs per operation in T16 and T32. Repeated inputs count
+as comparisons, not distinct test values. The seed is 20260928.
+
+\subsection{Reference portability correction}
+The unmodified reference failed a basic smoke case on the local ARM Mac:
+\code{takum32\_from\_float64(1.5)} returned \code{0x40000000}, encoding 1,
+instead of \code{0x44000000}. In that environment, \code{long double} has the
+precision of \code{double}. The reference's extended-float fraction extraction
+increments its exponent after integer normalization, shifting the fraction
+incorrectly. The routine also makes assumptions about the storage layout of
+\code{long double}.
+
+For validation, we replace that one extraction routine with a portable
+calculation using \code{ldexpl}, \code{floorl}, and an explicit nearest/even tie
+check. T32 requires at most 27 output fraction bits. The patch changes neither
+the reference's characteristic decoding nor its three arithmetic operators.
+The original checkout stays clean and a separate copy receives the patch.
+The repository includes the patch, its hash in the validation report, the
+upstream ISC license, and the original failed run. Accordingly, our reported
+agreement is with the \emph{corrected} reference, not the unmodified library.
+
+\section{Results and Discussion}
+The local execution on an ARM Mac with Python 3.14.5 passed all 20 offline tests,
+with no failures, errors, or skipped tests. These tests include 65,792 exhaustive
+T8/T16 round-trip patterns and 196,608 T8 operations checked against the
+independent exact oracle. Table~\ref{tab:validation} details the differential
+coverage; all 548,793 comparisons passed with the portability correction.
+The original reference produced 156,294 divergences on the same local test set,
+which are retained as evidence of the portability problem.
+
+\begin{table}[t]
+\caption{Differential comparisons with the corrected reference}
+\label{tab:validation}
+\centering
+\begin{tabular}{lrrr}
+\toprule
+Check & T8 & T16 & T32\\
+\midrule
+Decode & 256 & 65,536 & 20,101\\
+Encode & 20,261 & 85,541 & 40,106\\
+Add & 65,536 & 20,064 & 20,064\\
+Subtract & 65,536 & 20,064 & 20,064\\
+Multiply & 65,536 & 20,064 & 20,064\\
+\midrule
+Mismatches & 0 & 0 & 0\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+A simple demonstration illustrates input quantization. The expression
+$1.5+2.25$ produces $3.5$ in T8 because $2.25$ rounds to $2$ before addition.
+In T16, both operands are exact and the result is $3.75$. Multiplying the
+largest T8 value by itself saturates to that same largest value. Multiplying
+the smallest positive T8 value by itself preserves a nonzero result through
+lower saturation. These examples distinguish format behavior from errors in
+the arithmetic implementation.
+
+The exhaustive T8 oracle gives coverage over the complete operand domain for
+the chosen operations and rounding policy. T16/T32 arithmetic coverage remains
+sampled: agreement on these cases is not proof for all possible operands.
+Additionally, the C reference computes through host floating point, while the
+Python module computes exact rational intermediates. Carefully chosen inputs
+outside the sample can therefore expose intermediate-rounding differences.
+Rational boundary tests independently check the selected exact semantics.
+
+No comparative SpMV results are reported at this stage. In particular, the
+validation counts establish consistency of arithmetic behavior, not accuracy
+advantages over FP8/FP16/FP32. Runtime measurements in the JSON records describe
+the validation program and must not be interpreted as ALU latency or speedup.
+
+\section{Conclusion and Next Steps}
+The first milestone supplies a standalone linear Takum codec and scalar ALU for
+T8, T16, and T32, with explicit special-value, saturation, and rounding semantics.
+The combination of an independent exhaustive T8 oracle and a documented
+external reference comparison makes the implementation reviewable and provides
+a basis for subsequent integration.
+
+The next milestone will specify vector registers, active vector length,
+element width, masking, and the proposed arithmetic, dot-product, and narrowing
+instructions. Later experiments will add sparse matrix-vector multiplication,
+explicit FP8 baselines, a validated quadruple-precision reference, error
+distributions, and instruction/CSR analysis. Those results will support the
+final article and the 15-minute presentation.
+
+\section*{Reproducibility}
+Run \code{make verify} from the repository root. Offline tests require only
+Python; differential tests additionally require Git, a C99 compiler, and network
+access for the initial reference checkout. \code{make paper} compiles this
+IEEE-format source using Tectonic. Machine-readable reports, the complete T8
+value table, and CLI demonstration output are stored under \code{results/}.
+The repository is available to the project collaborators at
+\url{https://github.com/pedrohcali/aoc-takum-rvv}.
+
+\begin{thebibliography}{3}
+\bibitem{takum}
+L. Hunhold, ``Beating Posits at Their Own Game: Takum Arithmetic,'' in
+\emph{Next Generation Arithmetic}, LNCS, vol. 14666. Springer, 2024,
+pp. 1--51, doi: 10.1007/978-3-031-72709-2\_1.
+[Online]. Available: \url{https://arxiv.org/abs/2404.18603}
+\bibitem{simd}
+L. Hunhold, ``Streamlining SIMD ISA Extensions with Takum Arithmetic:
+A Case Study on Intel AVX10.2,'' in \emph{2025 14th International Conference on
+Modern Circuits and Systems Technologies (MOCAST)}, 2025, pp. 1--6.
+[Online]. Available: \url{https://arxiv.org/abs/2503.14067}
+\bibitem{libtakum}
+L. Hunhold, ``libtakum: Takum arithmetic C99 reference implementation,''
+version 2.0.0, revision \code{776ac0c} (full hash in the validation report).
+[Online]. Available: \url{https://github.com/takum-arithmetic/libtakum}
+\end{thebibliography}
+\end{document}

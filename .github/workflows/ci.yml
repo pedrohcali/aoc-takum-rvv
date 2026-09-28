@@ -1,0 +1,39 @@
+name: Validate arithmetic
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.10', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python scripts/run_tests.py
+      - run: python scripts/export_demo.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: offline-results-${{ matrix.python }}
+          path: results/
+  differential-tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python scripts/validate_reference.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reference-results-${{ matrix.os }}
+          path: results/reference-validation.json

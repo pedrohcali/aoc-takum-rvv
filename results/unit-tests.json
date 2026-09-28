@@ -1,0 +1,13 @@
+{
+  "generated_at_utc": "2026-09-28T17:51:45.787525+00:00",
+  "python": "3.14.5",
+  "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+  "tests": 20,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "duration_seconds": 8.167,
+  "success": true,
+  "exhaustive_t8_operation_cases": 196608,
+  "exhaustive_t8_t16_roundtrip_patterns": 65792
+}

@@ -1,0 +1,136 @@
+--- a/src/codec.c
++++ b/src/codec.c
+@@ -445,117 +445,22 @@
+ static inline uint64_t
+ extended_float_fraction_to_rounded_bits(long double f, uint_fast8_t num_bits)
+ {
+-	uint64_t F;
+-
+-	/*
+-	 * This function converts f in [0,1) to a num_bit fixed
+-	 * point representation, returning the correctly rounded
+-	 * num_bit LSB's
+-	 */
+-	if (f == 0 || num_bits == 0) {
+-		F = 0;
+-	} else {
+-		union {
+-			long double val;
+-
+-			struct __attribute__((__packed__)) {
+-#if LDBL_MANT_DIG == 53 && LDBL_MAX_EXP == 1024
+-				/* 64-bit long double, i.e. double is equal to
+-				 * long double */
+-				uint64_t sign_exp_fraction;
+-#elif LDBL_MANT_DIG == 64 && LDBL_MAX_EXP == 16384
+-/* 80-bit long double */
+-#if __BYTE_ORDER == __BIG_ENDIAN
+-				uint64_t fraction;
+-				uint16_t sign_exp;
+-#else
+-				uint16_t sign_exp;
+-				uint64_t fraction;
+-#endif
+-#elif LDBL_MANT_DIG == 113 && LDBL_MAX_EXP == 16384
+-/* 128-bit long double */
+-#if __BYTE_ORDER == __BIG_ENDIAN
+-				uint16_t fraction_reallydontcare;
+-				uint32_t fraction_dontcare;
+-				uint64_t fraction;
+-				uint16_t sign_exp;
+-#else
+-				uint16_t sign_exp;
+-				uint64_t fraction;
+-				uint32_t fraction_dontcare;
+-				uint16_t fraction_reallydontcare;
+-#endif
+-#else
+-				char junk;
+-#endif
+-			} bits;
+-		} fu = {
+-			.val = f,
+-		};
+-
+-		int q;
+-
+-		/*
+-		 * We know that f has the form (1+x)*2^q with q < 0.
+-		 * The fraction bits are in fu.bits.fraction.
+-		 */
+-		frexpl(f, &q);
+-
+-#if LDBL_MANT_DIG == 53 && LDBL_MAX_EXP == 1024
+-		/* 64-bit double, lower 52 bits are fractions, implicit 1 */
+-		F = ((UINT64_C(0x000fffffffffffff) & fu.bits.sign_exp_fraction)
+-		     << 11) |
+-		    (UINT64_C(1) << 63);
+-
+-		/*
+-		 * We correct q to reflect our shift from 1.xxx... to
+-		 * 0.1xxx...
+-		 */
+-		q++;
+-#elif LDBL_MANT_DIG == 64 && LDBL_MAX_EXP == 16384
+-		/* 80-bit long double, has explicit 1 */
+-		F = fu.bits.fraction;
+-#elif LDBL_MANT_DIG == 113 && LDBL_MAX_EXP == 16384
+-		/*
+-		 * 128-bit long double, has implicit 1
+-		 *
+-		 * We shift one to the right (we don't care about
+-		 * rounding because we don't need that kind of
+-		 * precision) and add the implicit 1 bit. The 1 bit
+-		 * is automatically the MSB.
+-		 */
+-		F = (fu.bits.fraction >> 1) | (UINT64_C(1) << 63);
+-
+-		/*
+-		 * We correct q to reflect our shift from 1.xxx... to
+-		 * 0.1xxx...
+-		 */
+-		q++;
+-#else
+-		(void)fu;
+-		F = 0;
+-#endif
+-
+-		/*
+-		 * If q = 0 we would be done here (because then the
+-		 * implicit 1 bit would be the first 'decimal' bit,
+-		 * which matches our normalised form). However q is
+-		 * generally <= 0, so we shift the bits by -q (given
+-		 * we did one right-shift earlier) to the right which
+-		 * 'normalises' it, as desired.
+-		 */
+-		F = (-q < 64) ? (F >> -q) : UINT64_C(0);
+-
+-		/*
+-		 * Round F to num_bit bits, possibly rounding up when the
+-		 * num_bit+1'th bit is set, but resolving a tie to even.
+-		 * The result will never be zero (under- or overflow) as we
+-		 * ensured this before with clamping
+-		 */
+-		F = util_round_uint64_to_number_of_bits(F, num_bits);
+-	}
+-
+-	return F;
++	/* Portable extraction for reference validation: no long-double ABI layout
++	 * assumptions. T8/T16/T32 need at most 27 output fraction bits.
++	 * This preserves the upstream nearest/even rounding policy.
++	 */
++	long double scaled, integral, remainder;
++	uint64_t result;
++
++	if (f == 0.0L || num_bits == 0) {
++		return 0;
++	}
++	scaled = ldexpl(f, num_bits);
++	integral = floorl(scaled);
++	remainder = scaled - integral;
++	result = (uint64_t)integral;
++	return result + (remainder > 0.5L ||
++	                 (remainder == 0.5L && (result & 1)));
+ }
+ 
+ /*

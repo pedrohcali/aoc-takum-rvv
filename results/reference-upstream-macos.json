@@ -1,0 +1,558 @@
+{
+  "reference": "https://github.com/takum-arithmetic/libtakum.git",
+  "revision": "776ac0ca7855f640100731ed8bbb0c7cf83b2d94",
+  "seed": 20260928,
+  "samples_per_large_width": 20000,
+  "generated_at_utc": "2026-09-28T17:50:25.059527+00:00",
+  "python": "3.14.5",
+  "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+  "duration_seconds": 5.478,
+  "groups": [
+    {
+      "kind": "decode",
+      "width": 8,
+      "cases": 256,
+      "mismatches": 0
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "cases": 20261,
+      "mismatches": 1503
+    },
+    {
+      "kind": "add",
+      "width": 8,
+      "cases": 65536,
+      "mismatches": 21641
+    },
+    {
+      "kind": "sub",
+      "width": 8,
+      "cases": 65536,
+      "mismatches": 21641
+    },
+    {
+      "kind": "mul",
+      "width": 8,
+      "cases": 65536,
+      "mismatches": 11354
+    },
+    {
+      "kind": "decode",
+      "width": 16,
+      "cases": 65536,
+      "mismatches": 0
+    },
+    {
+      "kind": "encode",
+      "width": 16,
+      "cases": 85541,
+      "mismatches": 0
+    },
+    {
+      "kind": "add",
+      "width": 16,
+      "cases": 20064,
+      "mismatches": 0
+    },
+    {
+      "kind": "sub",
+      "width": 16,
+      "cases": 20064,
+      "mismatches": 0
+    },
+    {
+      "kind": "mul",
+      "width": 16,
+      "cases": 20064,
+      "mismatches": 0
+    },
+    {
+      "kind": "decode",
+      "width": 32,
+      "cases": 20101,
+      "mismatches": 0
+    },
+    {
+      "kind": "encode",
+      "width": 32,
+      "cases": 40106,
+      "mismatches": 40067
+    },
+    {
+      "kind": "add",
+      "width": 32,
+      "cases": 20064,
+      "mismatches": 20028
+    },
+    {
+      "kind": "sub",
+      "width": 32,
+      "cases": 20064,
+      "mismatches": 20028
+    },
+    {
+      "kind": "mul",
+      "width": 32,
+      "cases": 20064,
+      "mismatches": 20032
+    }
+  ],
+  "total_cases": 548793,
+  "total_mismatches": 156294,
+  "first_mismatches": [
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "0.01171875"
+      ],
+      "actual": "41",
+      "expected": "40"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "0.0234375"
+      ],
+      "actual": "43",
+      "expected": "42"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "0.046875"
+      ],
+      "actual": "45",
+      "expected": "44"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "0.09375"
+      ],
+      "actual": "47",
+      "expected": "46"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "0.15625"
+      ],
+      "actual": "49",
+      "expected": "50"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "0.1875"
+      ],
+      "actual": "50",
+      "expected": "48"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "0.21875"
+      ],
+      "actual": "51",
+      "expected": "48"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "0.3125"
+      ],
+      "actual": "53",
+      "expected": "54"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "0.375"
+      ],
+      "actual": "54",
+      "expected": "52"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "0.4375"
+      ],
+      "actual": "55",
+      "expected": "52"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "0.5625"
+      ],
+      "actual": "57",
+      "expected": "58"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "0.625"
+      ],
+      "actual": "58",
+      "expected": "60"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "0.6875"
+      ],
+      "actual": "59",
+      "expected": "62"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "0.75"
+      ],
+      "actual": "60",
+      "expected": "56"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "0.8125"
+      ],
+      "actual": "61",
+      "expected": "56"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "0.875"
+      ],
+      "actual": "62",
+      "expected": "56"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "0.9375"
+      ],
+      "actual": "63",
+      "expected": "56"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "1.125"
+      ],
+      "actual": "65",
+      "expected": "66"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "1.25"
+      ],
+      "actual": "66",
+      "expected": "68"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "1.375"
+      ],
+      "actual": "67",
+      "expected": "70"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "1.5"
+      ],
+      "actual": "68",
+      "expected": "64"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "1.625"
+      ],
+      "actual": "69",
+      "expected": "64"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "1.75"
+      ],
+      "actual": "70",
+      "expected": "64"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "1.875"
+      ],
+      "actual": "71",
+      "expected": "64"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "2.5"
+      ],
+      "actual": "73",
+      "expected": "74"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "3.0"
+      ],
+      "actual": "74",
+      "expected": "72"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "3.5"
+      ],
+      "actual": "75",
+      "expected": "72"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "5.0"
+      ],
+      "actual": "77",
+      "expected": "78"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "6.0"
+      ],
+      "actual": "78",
+      "expected": "76"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "7.0"
+      ],
+      "actual": "79",
+      "expected": "76"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "12.0"
+      ],
+      "actual": "81",
+      "expected": "80"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "24.0"
+      ],
+      "actual": "83",
+      "expected": "82"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "48.0"
+      ],
+      "actual": "85",
+      "expected": "84"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "96.0"
+      ],
+      "actual": "87",
+      "expected": "86"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "-96.0"
+      ],
+      "actual": "169",
+      "expected": "168"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "-48.0"
+      ],
+      "actual": "171",
+      "expected": "170"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "-24.0"
+      ],
+      "actual": "173",
+      "expected": "172"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "-12.0"
+      ],
+      "actual": "175",
+      "expected": "174"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "-7.0"
+      ],
+      "actual": "177",
+      "expected": "178"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "-6.0"
+      ],
+      "actual": "178",
+      "expected": "176"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "-5.0"
+      ],
+      "actual": "179",
+      "expected": "176"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "-3.5"
+      ],
+      "actual": "181",
+      "expected": "182"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "-3.0"
+      ],
+      "actual": "182",
+      "expected": "180"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "-2.5"
+      ],
+      "actual": "183",
+      "expected": "180"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "-1.875"
+      ],
+      "actual": "185",
+      "expected": "186"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "-1.75"
+      ],
+      "actual": "186",
+      "expected": "188"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "-1.625"
+      ],
+      "actual": "187",
+      "expected": "190"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "-1.5"
+      ],
+      "actual": "188",
+      "expected": "184"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "-1.375"
+      ],
+      "actual": "189",
+      "expected": "184"
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "inputs": [
+        "-1.25"
+      ],
+      "actual": "190",
+      "expected": "184"
+    }
+  ],
+  "reference_mode": "upstream",
+  "patch_sha256": null
+}

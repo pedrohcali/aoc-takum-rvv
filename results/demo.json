@@ -1,0 +1,527 @@
+[
+  {
+    "width": 8,
+    "operation": "add",
+    "inputs": [
+      "1.5",
+      "2.25"
+    ],
+    "result": {
+      "hex": "0x4b",
+      "binary": "01001011",
+      "value": "7/2",
+      "fields": {
+        "bits": 75,
+        "width": 8,
+        "sign": 0,
+        "direction": 1,
+        "regime": 1,
+        "characteristic_width": 1,
+        "characteristic_bits": 0,
+        "characteristic": 1,
+        "fraction_width": 2,
+        "fraction_bits": 3,
+        "ghost_bits": 0,
+        "exponent": 1,
+        "special": null
+      }
+    },
+    "status": {
+      "bits": 75,
+      "inexact": false,
+      "saturated_low": false,
+      "saturated_high": false,
+      "invalid": false
+    }
+  },
+  {
+    "width": 8,
+    "operation": "sub",
+    "inputs": [
+      "1",
+      "1"
+    ],
+    "result": {
+      "hex": "0x00",
+      "binary": "00000000",
+      "value": "0",
+      "fields": {
+        "bits": 0,
+        "width": 8,
+        "sign": 0,
+        "direction": 0,
+        "regime": 0,
+        "characteristic_width": 7,
+        "characteristic_bits": 0,
+        "characteristic": -255,
+        "fraction_width": 0,
+        "fraction_bits": 0,
+        "ghost_bits": 4,
+        "exponent": -255,
+        "special": "zero"
+      }
+    },
+    "status": {
+      "bits": 0,
+      "inexact": false,
+      "saturated_low": false,
+      "saturated_high": false,
+      "invalid": false
+    }
+  },
+  {
+    "width": 8,
+    "operation": "mul",
+    "inputs": [
+      "1.5",
+      "-2"
+    ],
+    "result": {
+      "hex": "0xb6",
+      "binary": "10110110",
+      "value": "-3",
+      "fields": {
+        "bits": 182,
+        "width": 8,
+        "sign": 1,
+        "direction": 0,
+        "regime": 6,
+        "characteristic_width": 1,
+        "characteristic_bits": 1,
+        "characteristic": -2,
+        "fraction_width": 2,
+        "fraction_bits": 2,
+        "ghost_bits": 0,
+        "exponent": 1,
+        "special": null
+      }
+    },
+    "status": {
+      "bits": 182,
+      "inexact": false,
+      "saturated_low": false,
+      "saturated_high": false,
+      "invalid": false
+    }
+  },
+  {
+    "width": 8,
+    "operation": "mul",
+    "inputs": [
+      "1e70",
+      "1e70"
+    ],
+    "result": {
+      "hex": "0x7f",
+      "binary": "01111111",
+      "value": "883423532389192164791648750371459257913741948437809479060803100646309888",
+      "fields": {
+        "bits": 127,
+        "width": 8,
+        "sign": 0,
+        "direction": 1,
+        "regime": 7,
+        "characteristic_width": 7,
+        "characteristic_bits": 112,
+        "characteristic": 239,
+        "fraction_width": 0,
+        "fraction_bits": 0,
+        "ghost_bits": 4,
+        "exponent": 239,
+        "special": null
+      }
+    },
+    "status": {
+      "bits": 127,
+      "inexact": true,
+      "saturated_low": false,
+      "saturated_high": true,
+      "invalid": false
+    }
+  },
+  {
+    "width": 8,
+    "operation": "add",
+    "inputs": [
+      "NaR",
+      "1"
+    ],
+    "result": {
+      "hex": "0x80",
+      "binary": "10000000",
+      "value": "NaR",
+      "fields": {
+        "bits": 128,
+        "width": 8,
+        "sign": 1,
+        "direction": 0,
+        "regime": 0,
+        "characteristic_width": 7,
+        "characteristic_bits": 0,
+        "characteristic": -255,
+        "fraction_width": 0,
+        "fraction_bits": 0,
+        "ghost_bits": 4,
+        "exponent": 254,
+        "special": "nar"
+      }
+    },
+    "status": {
+      "bits": 128,
+      "inexact": false,
+      "saturated_low": false,
+      "saturated_high": false,
+      "invalid": true
+    }
+  },
+  {
+    "width": 16,
+    "operation": "add",
+    "inputs": [
+      "1.5",
+      "2.25"
+    ],
+    "result": {
+      "hex": "0x4b80",
+      "binary": "0100101110000000",
+      "value": "15/4",
+      "fields": {
+        "bits": 19328,
+        "width": 16,
+        "sign": 0,
+        "direction": 1,
+        "regime": 1,
+        "characteristic_width": 1,
+        "characteristic_bits": 0,
+        "characteristic": 1,
+        "fraction_width": 10,
+        "fraction_bits": 896,
+        "ghost_bits": 0,
+        "exponent": 1,
+        "special": null
+      }
+    },
+    "status": {
+      "bits": 19328,
+      "inexact": false,
+      "saturated_low": false,
+      "saturated_high": false,
+      "invalid": false
+    }
+  },
+  {
+    "width": 16,
+    "operation": "sub",
+    "inputs": [
+      "1",
+      "1"
+    ],
+    "result": {
+      "hex": "0x0000",
+      "binary": "0000000000000000",
+      "value": "0",
+      "fields": {
+        "bits": 0,
+        "width": 16,
+        "sign": 0,
+        "direction": 0,
+        "regime": 0,
+        "characteristic_width": 7,
+        "characteristic_bits": 0,
+        "characteristic": -255,
+        "fraction_width": 4,
+        "fraction_bits": 0,
+        "ghost_bits": 0,
+        "exponent": -255,
+        "special": "zero"
+      }
+    },
+    "status": {
+      "bits": 0,
+      "inexact": false,
+      "saturated_low": false,
+      "saturated_high": false,
+      "invalid": false
+    }
+  },
+  {
+    "width": 16,
+    "operation": "mul",
+    "inputs": [
+      "1.5",
+      "-2"
+    ],
+    "result": {
+      "hex": "0xb600",
+      "binary": "1011011000000000",
+      "value": "-3",
+      "fields": {
+        "bits": 46592,
+        "width": 16,
+        "sign": 1,
+        "direction": 0,
+        "regime": 6,
+        "characteristic_width": 1,
+        "characteristic_bits": 1,
+        "characteristic": -2,
+        "fraction_width": 10,
+        "fraction_bits": 512,
+        "ghost_bits": 0,
+        "exponent": 1,
+        "special": null
+      }
+    },
+    "status": {
+      "bits": 46592,
+      "inexact": false,
+      "saturated_low": false,
+      "saturated_high": false,
+      "invalid": false
+    }
+  },
+  {
+    "width": 16,
+    "operation": "mul",
+    "inputs": [
+      "1e70",
+      "1e70"
+    ],
+    "result": {
+      "hex": "0x7fff",
+      "binary": "0111111111111111",
+      "value": "56086793224325032158292195863583205366427648822419648206612267253832922169344",
+      "fields": {
+        "bits": 32767,
+        "width": 16,
+        "sign": 0,
+        "direction": 1,
+        "regime": 7,
+        "characteristic_width": 7,
+        "characteristic_bits": 127,
+        "characteristic": 254,
+        "fraction_width": 4,
+        "fraction_bits": 15,
+        "ghost_bits": 0,
+        "exponent": 254,
+        "special": null
+      }
+    },
+    "status": {
+      "bits": 32767,
+      "inexact": true,
+      "saturated_low": false,
+      "saturated_high": true,
+      "invalid": false
+    }
+  },
+  {
+    "width": 16,
+    "operation": "add",
+    "inputs": [
+      "NaR",
+      "1"
+    ],
+    "result": {
+      "hex": "0x8000",
+      "binary": "1000000000000000",
+      "value": "NaR",
+      "fields": {
+        "bits": 32768,
+        "width": 16,
+        "sign": 1,
+        "direction": 0,
+        "regime": 0,
+        "characteristic_width": 7,
+        "characteristic_bits": 0,
+        "characteristic": -255,
+        "fraction_width": 4,
+        "fraction_bits": 0,
+        "ghost_bits": 0,
+        "exponent": 254,
+        "special": "nar"
+      }
+    },
+    "status": {
+      "bits": 32768,
+      "inexact": false,
+      "saturated_low": false,
+      "saturated_high": false,
+      "invalid": true
+    }
+  },
+  {
+    "width": 32,
+    "operation": "add",
+    "inputs": [
+      "1.5",
+      "2.25"
+    ],
+    "result": {
+      "hex": "0x4b800000",
+      "binary": "01001011100000000000000000000000",
+      "value": "15/4",
+      "fields": {
+        "bits": 1266679808,
+        "width": 32,
+        "sign": 0,
+        "direction": 1,
+        "regime": 1,
+        "characteristic_width": 1,
+        "characteristic_bits": 0,
+        "characteristic": 1,
+        "fraction_width": 26,
+        "fraction_bits": 58720256,
+        "ghost_bits": 0,
+        "exponent": 1,
+        "special": null
+      }
+    },
+    "status": {
+      "bits": 1266679808,
+      "inexact": false,
+      "saturated_low": false,
+      "saturated_high": false,
+      "invalid": false
+    }
+  },
+  {
+    "width": 32,
+    "operation": "sub",
+    "inputs": [
+      "1",
+      "1"
+    ],
+    "result": {
+      "hex": "0x00000000",
+      "binary": "00000000000000000000000000000000",
+      "value": "0",
+      "fields": {
+        "bits": 0,
+        "width": 32,
+        "sign": 0,
+        "direction": 0,
+        "regime": 0,
+        "characteristic_width": 7,
+        "characteristic_bits": 0,
+        "characteristic": -255,
+        "fraction_width": 20,
+        "fraction_bits": 0,
+        "ghost_bits": 0,
+        "exponent": -255,
+        "special": "zero"
+      }
+    },
+    "status": {
+      "bits": 0,
+      "inexact": false,
+      "saturated_low": false,
+      "saturated_high": false,
+      "invalid": false
+    }
+  },
+  {
+    "width": 32,
+    "operation": "mul",
+    "inputs": [
+      "1.5",
+      "-2"
+    ],
+    "result": {
+      "hex": "0xb6000000",
+      "binary": "10110110000000000000000000000000",
+      "value": "-3",
+      "fields": {
+        "bits": 3053453312,
+        "width": 32,
+        "sign": 1,
+        "direction": 0,
+        "regime": 6,
+        "characteristic_width": 1,
+        "characteristic_bits": 1,
+        "characteristic": -2,
+        "fraction_width": 26,
+        "fraction_bits": 33554432,
+        "ghost_bits": 0,
+        "exponent": 1,
+        "special": null
+      }
+    },
+    "status": {
+      "bits": 3053453312,
+      "inexact": false,
+      "saturated_low": false,
+      "saturated_high": false,
+      "invalid": false
+    }
+  },
+  {
+    "width": 32,
+    "operation": "mul",
+    "inputs": [
+      "1e70",
+      "1e70"
+    ],
+    "result": {
+      "hex": "0x7fffffff",
+      "binary": "01111111111111111111111111111111",
+      "value": "57896017011672710549530342765320504818533182528384393338182571353859669622784",
+      "fields": {
+        "bits": 2147483647,
+        "width": 32,
+        "sign": 0,
+        "direction": 1,
+        "regime": 7,
+        "characteristic_width": 7,
+        "characteristic_bits": 127,
+        "characteristic": 254,
+        "fraction_width": 20,
+        "fraction_bits": 1048575,
+        "ghost_bits": 0,
+        "exponent": 254,
+        "special": null
+      }
+    },
+    "status": {
+      "bits": 2147483647,
+      "inexact": true,
+      "saturated_low": false,
+      "saturated_high": true,
+      "invalid": false
+    }
+  },
+  {
+    "width": 32,
+    "operation": "add",
+    "inputs": [
+      "NaR",
+      "1"
+    ],
+    "result": {
+      "hex": "0x80000000",
+      "binary": "10000000000000000000000000000000",
+      "value": "NaR",
+      "fields": {
+        "bits": 2147483648,
+        "width": 32,
+        "sign": 1,
+        "direction": 0,
+        "regime": 0,
+        "characteristic_width": 7,
+        "characteristic_bits": 0,
+        "characteristic": -255,
+        "fraction_width": 20,
+        "fraction_bits": 0,
+        "ghost_bits": 0,
+        "exponent": 254,
+        "special": "nar"
+      }
+    },
+    "status": {
+      "bits": 2147483648,
+      "inexact": false,
+      "saturated_low": false,
+      "saturated_high": false,
+      "invalid": true
+    }
+  }
+]

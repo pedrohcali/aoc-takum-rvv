@@ -1,4 +1,4 @@
-# Takum-RVV — AOC/UFMG 2026/2
+# Takum-RVV: AOC/UFMG 2026/2
 
 Modelo funcional da aritmética **Takum linear** T8/T16/T32, preparado para a
 primeira entrega do Projeto Integrador de Arquitetura e Organização de Computadores.
@@ -89,7 +89,7 @@ não CSRs arquiteturais. Não há suporte a Takum logarítmico nesta versão.
 ## Referências
 
 1. L. Hunhold, *Beating Posits at Their Own Game: Takum Arithmetic*, 2024.
-   [Artigo](https://arxiv.org/abs/2404.18603), definição 8 e algoritmos 4–5.
+   [Artigo](https://arxiv.org/abs/2404.18603), definição 8 e algoritmos 4 e 5.
 2. L. Hunhold, *Streamlining SIMD ISA Extensions with Takum Arithmetic:
    A Case Study on Intel AVX10.2*, 2025.
    [Artigo](https://arxiv.org/abs/2503.14067).
@@ -98,6 +98,8 @@ não CSRs arquiteturais. Não há suporte a Takum logarítmico nesta versão.
 
 ## Equipe
 
-Pedro Lima e Arthur Fernandes. Identificação provisória: confirmar os nomes
-completos e acrescentar os demais integrantes antes da submissão (o enunciado
-exige de 3 a 5 alunos). O convite no GitHub não substitui a definição formal da equipe.
+- Arthur dos Santos Fernandes
+- Bruno Lima Soares
+- Lucas Rodrigues Prosperi Ayala
+- Pedro Henrique Campos Lima
+- Pedro Lopes Ozelin

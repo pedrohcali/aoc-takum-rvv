@@ -1,6 +1,6 @@
 # Roteiro da demonstração da fase 1
 
-Tempo sugerido: 5–7 minutos. Executar na raiz do repositório.
+Tempo sugerido: 5 a 7 minutos. Executar na raiz do repositório.
 
 ## 1. Campos e representação (1 minuto)
 
@@ -38,7 +38,7 @@ python3 -m takum add --width 8 NaR 1
 O primeiro produto satura no máximo; o segundo, no mínimo positivo.
 Nenhum deles vira infinito ou zero. O último propaga NaR.
 
-## 4. Evidências e limitações (1–3 minutos)
+## 4. Evidências e limitações (1 a 3 minutos)
 
 ```sh
 python3 scripts/run_tests.py

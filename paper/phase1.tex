@@ -6,13 +6,18 @@
 \usepackage{graphicx}
 \usepackage{url}
 \usepackage[hidelinks]{hyperref}
+\usepackage{etoolbox}
+\patchcmd{\abstract}{---}{: }{}{\errmessage{Abstract punctuation patch failed}}
+\patchcmd{\IEEEkeywords}{---}{: }{}{\errmessage{Keywords punctuation patch failed}}
 \newcommand{\NaR}{\mathrm{NaR}}
 \newcommand{\code}[1]{\texttt{#1}}
 \title{An Exact Functional Model of Linear Takum Arithmetic\\for a RISC-V Vector Extension: Phase I}
-\author{\IEEEauthorblockN{Pedro Lima and Arthur Fernandes}
+\author{\IEEEauthorblockN{Arthur dos Santos Fernandes, Bruno Lima Soares,\\
+Lucas Rodrigues Prosperi Ayala, Pedro Henrique Campos Lima,\\
+and Pedro Lopes Ozelin}
 \IEEEauthorblockA{Department of Electronic Engineering\\
 Universidade Federal de Minas Gerais, Belo Horizonte, Brazil\\
-Architecture and Computer Organization --- 2026/2}}
+Architecture and Computer Organization: 2026/2}}
 \begin{document}
 \maketitle
 \begin{abstract}
@@ -297,12 +302,12 @@ The repository is available to the project collaborators at
 \bibitem{takum}
 L. Hunhold, ``Beating Posits at Their Own Game: Takum Arithmetic,'' in
 \emph{Next Generation Arithmetic}, LNCS, vol. 14666. Springer, 2024,
-pp. 1--51, doi: 10.1007/978-3-031-72709-2\_1.
+pp. 1 to 51, doi: 10.1007/978-3-031-72709-2\_1.
 [Online]. Available: \url{https://arxiv.org/abs/2404.18603}
 \bibitem{simd}
 L. Hunhold, ``Streamlining SIMD ISA Extensions with Takum Arithmetic:
 A Case Study on Intel AVX10.2,'' in \emph{2025 14th International Conference on
-Modern Circuits and Systems Technologies (MOCAST)}, 2025, pp. 1--6.
+Modern Circuits and Systems Technologies (MOCAST)}, 2025, pp. 1 to 6.
 [Online]. Available: \url{https://arxiv.org/abs/2503.14067}
 \bibitem{libtakum}
 L. Hunhold, ``libtakum: Takum arithmetic C99 reference implementation,''

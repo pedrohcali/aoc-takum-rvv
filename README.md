@@ -66,7 +66,7 @@ concordância com a biblioteca original sem modificações. Consulte
 | `docs/DEMO.md` | Roteiro comentado da demonstração |
 | `paper/phase1.tex` | Artigo parcial em inglês, formato IEEE |
 | `output/pdf/phase1.pdf` | Artigo parcial compilado |
-| `ProjectGuidelinesAOC.pdf` | Enunciado da disciplina |
+| `INPUTS/` | Enunciado, artigos de referência e template IEEE |
 
 Para compilar o artigo, instale [Tectonic](https://tectonic-typesetting.github.io/)
 e execute `make paper` (a primeira compilação baixa os pacotes LaTeX).

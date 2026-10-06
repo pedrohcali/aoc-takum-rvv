@@ -1,16 +1,27 @@
 \documentclass[conference,a4paper]{IEEEtran}
+\IEEEoverridecommandlockouts
+% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+% Project additions to the IEEE template.
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
-\usepackage{amsmath,amssymb}
 \usepackage{booktabs}
-\usepackage{graphicx}
 \usepackage{url}
-\usepackage[hidelinks]{hyperref}
 \usepackage{etoolbox}
 \patchcmd{\abstract}{---}{: }{}{\errmessage{Abstract punctuation patch failed}}
 \patchcmd{\IEEEkeywords}{---}{: }{}{\errmessage{Keywords punctuation patch failed}}
 \newcommand{\NaR}{\mathrm{NaR}}
 \newcommand{\code}[1]{\texttt{#1}}
+\usepackage[hidelinks]{hyperref}
+\begin{document}
+
 \title{An Exact Functional Model of Linear Takum Arithmetic\\for a RISC-V Vector Extension: Phase I}
 \author{\IEEEauthorblockN{Arthur dos Santos Fernandes, Bruno Lima Soares,\\
 Lucas Rodrigues Prosperi Ayala, Pedro Henrique Campos Lima,\\
@@ -18,8 +29,9 @@ and Pedro Lopes Ozelin}
 \IEEEauthorblockA{Department of Electronic Engineering\\
 Universidade Federal de Minas Gerais, Belo Horizonte, Brazil\\
 Architecture and Computer Organization: 2026/2}}
-\begin{document}
+
 \maketitle
+
 \begin{abstract}
 This report presents the first milestone of a project on Takum arithmetic for a
 simplified RISC-V vector extension. We implement a scalar functional model of

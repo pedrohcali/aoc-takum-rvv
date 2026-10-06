@@ -4,7 +4,7 @@
 
 Implementação própria, em Python, da **variante linear** da definição 8 de
 Hunhold (2024), com tamanhos T8, T16 e T32. A escolha é coerente com o estudo de
-SIMD de Hunhold (2025), cuja figura 1 identifica explicitamente o Takum linear.
+SIMD de Hunhold (2025), cuja figura 2 identifica explicitamente o Takum linear.
 O enunciado cita ambos os trabalhos e não fixa a variante; a escolha está
 registrada para discussão com o professor.
 
@@ -32,8 +32,10 @@ MSB                                      LSB
 - `e = (1 - 2S)(c + S)`.
 - Valor finito não nulo: `((1 - 3S) + f) * 2^e`.
 
-Quando T8 não contém todos os bits de C, completamos C com zeros à direita
-(*ghost bits*), conforme a definição 8. Nesse caso não existem bits F físicos.
+A definição 8 é enunciada para n ≥ 12. Como Takums são invariantes à extensão
+com zeros, cadeias menores são estendidas com zeros para decodificação
+(Hunhold, 2025, figura 1). Quando T8 não contém todos os bits de C, completamos
+C com zeros à direita (*ghost bits*). Nesse caso não existem bits F físicos.
 O objeto `Fields` informa o número de zeros acrescentados e os campos
 interpretados após essa extensão. Zeros extras na fração seriam equivalentes,
 mas não são materializados, para deixar visível a precisão armazenada.

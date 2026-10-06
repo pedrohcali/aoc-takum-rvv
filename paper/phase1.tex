@@ -1,4 +1,4 @@
-\documentclass[conference,a4paper]{IEEEtran}
+\documentclass[conference]{IEEEtran}
 \IEEEoverridecommandlockouts
 % The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
 \usepackage{cite}
@@ -11,24 +11,41 @@
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 % Project additions to the IEEE template.
 \usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}
 \usepackage{booktabs}
 \usepackage{url}
-\usepackage{etoolbox}
-\patchcmd{\abstract}{---}{: }{}{\errmessage{Abstract punctuation patch failed}}
-\patchcmd{\IEEEkeywords}{---}{: }{}{\errmessage{Keywords punctuation patch failed}}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta}
 \newcommand{\NaR}{\mathrm{NaR}}
 \newcommand{\code}[1]{\texttt{#1}}
 \usepackage[hidelinks]{hyperref}
 \begin{document}
 
-\title{An Exact Functional Model of Linear Takum Arithmetic\\for a RISC-V Vector Extension: Phase I}
-\author{\IEEEauthorblockN{Arthur dos Santos Fernandes, Bruno Lima Soares,\\
-Lucas Rodrigues Prosperi Ayala, Pedro Henrique Campos Lima,\\
-and Pedro Lopes Ozelin}
-\IEEEauthorblockA{Department of Electronic Engineering\\
-Universidade Federal de Minas Gerais, Belo Horizonte, Brazil\\
-Architecture and Computer Organization: 2026/2}}
+\title{An Exact Functional Model of Linear Takum Arithmetic Toward a RISC-V Vector Extension}
+\author{\IEEEauthorblockN{Arthur dos Santos Fernandes}
+\IEEEauthorblockA{\textit{Department of Electronic Engineering} \\
+\textit{Universidade Federal de Minas Gerais}\\
+Belo Horizonte, Brazil}
+\and
+\IEEEauthorblockN{Bruno Lima Soares}
+\IEEEauthorblockA{\textit{Department of Electronic Engineering} \\
+\textit{Universidade Federal de Minas Gerais}\\
+Belo Horizonte, Brazil}
+\and
+\IEEEauthorblockN{Lucas Rodrigues Prosperi Ayala}
+\IEEEauthorblockA{\textit{Department of Electronic Engineering} \\
+\textit{Universidade Federal de Minas Gerais}\\
+Belo Horizonte, Brazil}
+\and
+\IEEEauthorblockN{Pedro Henrique Campos Lima}
+\IEEEauthorblockA{\textit{Department of Electronic Engineering} \\
+\textit{Universidade Federal de Minas Gerais}\\
+Belo Horizonte, Brazil}
+\and
+\IEEEauthorblockN{Pedro Lopes Ozelin}
+\IEEEauthorblockA{\textit{Department of Electronic Engineering} \\
+\textit{Universidade Federal de Minas Gerais}\\
+Belo Horizonte, Brazil}
+}
 
 \maketitle
 
@@ -52,6 +69,20 @@ Takum, tapered precision, computer arithmetic, functional simulation, RISC-V
 \end{IEEEkeywords}
 
 \section{Introduction}
+SIMD and vector units now support several low-precision floating-point
+formats, such as IEEE 754 binary16~\cite{ieee754}, bfloat16~\cite{bfloat16},
+and the OFP8 E4M3 and E5M2 types~\cite{ofp8}, mainly for deep-learning
+workloads. Because these formats remain within the IEEE 754 framework, they
+inherit its limitations and introduce inconsistencies and added complexity
+into the instruction set~\cite{simd}. Takum arithmetic is a tapered-precision
+alternative with an asymptotically constant dynamic range in terms of
+bit-string length~\cite{takum}. All takum precisions share a common decoder
+that processes at most the 12 most significant bits, and the AVX10.2 case
+study indicates potential for 8- and 16-bit general-purpose SIMD
+arithmetic~\cite{simd}. That study names corresponding RISC-V vector
+extensions as a direction for future work; this project addresses the RISC-V
+Vector extension (RVV)~\cite{rvv}.
+
 Low-precision arithmetic requires explicit choices about dynamic range,
 precision, exceptional values, and rounding. These choices affect both numerical
 results and the architecture exposed to software. The AOC project proposes
@@ -73,6 +104,11 @@ makes no claim about processor speedup, silicon area, power consumption, or
 numerical superiority over IEEE formats.
 
 \section{Related Work}
+Posit arithmetic~\cite{posit} introduced tapered precision as an alternative to
+IEEE 754 floating point~\cite{ieee754}. Takums combine the advantages of posits
+in low-bit applications with high encoding efficiency for numbers distant from
+unity~\cite{takum}.
+
 Hunhold defines the Takum encoding and analyzes its properties, including
 monotonicity and two's-complement negation. Definition 8 specifies the linear
 variant; Algorithms 4 and 5 connect its fields to a conventional binary
@@ -83,6 +119,14 @@ The later SIMD study motivates a consistent operand family across precisions
 and evaluates possible changes to AVX10.2~\cite{simd}. Its architectural
 conclusions motivate investigation in other instruction sets; they do not
 establish corresponding RISC-V performance results for this project.
+A VHDL hardware codec for takums has also been reported~\cite{takumvhdl};
+the present milestone models arithmetic semantics in software instead.
+
+Other efforts also depart from IEEE 754 in RISC-V floating-point units. The
+FPHUB-RISCV project~\cite{fphub} defines a HUB format with an implicit least
+significant bit and round-to-nearest as its only rounding mode, aiming to
+reduce the area and power of the unit. Unlike takums, FPHUB keeps an IEEE-like
+field layout instead of tapered precision.
 
 The public \code{libtakum} C99 library provides a separately implemented
 reference~\cite{libtakum}. Version 2.0.0 uses \code{takum8}, \code{takum16}, and
@@ -110,6 +154,10 @@ nonzero value is
 For short encodings that end inside $C$, missing characteristic bits are
 interpreted as trailing zeros, or \emph{ghost bits}. The software reports the
 number of inserted zeros. There is no stored fraction in these cases.
+This follows from the zero-extension invariance of takums: Definition 8
+in~\cite{takum} is stated for $n\ge 12$, and shorter bit strings are
+zero-extended to 12 bits for decoding~\cite{simd}. Appending only the zeros
+needed to complete $C$ is equivalent.
 
 All-zero bits encode zero. The sign bit followed by zeros encodes $\NaR$.
 Table~\ref{tab:examples} gives selected T8 examples. The full 256-entry table is
@@ -172,18 +220,18 @@ which avoids an unintended conversion through binary64.
 
 \begin{figure}[t]
 \centering
-\fbox{\begin{minipage}{0.85\columnwidth}
-\centering
-T8 / T16 / T32 operand bits\\[3pt]
-$\downarrow$\\[3pt]
-Decode S, D, R, C, F and special values\\[3pt]
-$\downarrow$\\[3pt]
-Exact rational add / subtract / multiply\\[3pt]
-$\downarrow$\\[3pt]
-One output rounding and saturation\\[3pt]
-$\downarrow$\\[3pt]
-Result bits and diagnostic metadata
-\end{minipage}}
+\begin{tikzpicture}[node distance=4mm,
+  stage/.style={draw, rounded corners=2pt, align=center,
+    minimum width=0.8\columnwidth, minimum height=6mm, font=\small},
+  data/.style={stage, fill=black!8},
+  every edge/.style={draw, -{Stealth}}]
+\node[data]  (in)  {T8 / T16 / T32 operand bits};
+\node[stage] (dec) [below=of in]  {Decode S, D, R, C, F and special values};
+\node[stage] (op)  [below=of dec] {Exact rational add / subtract / multiply};
+\node[stage] (rnd) [below=of op]  {One output rounding and saturation};
+\node[data]  (out) [below=of rnd] {Result bits and diagnostic metadata};
+\path (in) edge (dec) (dec) edge (op) (op) edge (rnd) (rnd) edge (out);
+\end{tikzpicture}
 \caption{Scalar arithmetic path implemented in phase I. The blocks describe
 functional responsibilities, not hardware stages or cycle latency.}
 \label{fig:architecture}
@@ -246,6 +294,9 @@ independent exact oracle. Table~\ref{tab:validation} details the differential
 coverage; all 548,793 comparisons passed with the portability correction.
 The original reference produced 156,294 divergences on the same local test set,
 which are retained as evidence of the portability problem.
+In continuous integration, the same differential suite ran on Linux x86-64
+and macOS arm64 with Python 3.13, also with zero mismatches against the
+corrected reference.
 
 \begin{table}[t]
 \caption{Differential comparisons with the corrected reference}
@@ -294,12 +345,9 @@ The combination of an independent exhaustive T8 oracle and a documented
 external reference comparison makes the implementation reviewable and provides
 a basis for subsequent integration.
 
-The next milestone will specify vector registers, active vector length,
-element width, masking, and the proposed arithmetic, dot-product, and narrowing
-instructions. Later experiments will add sparse matrix-vector multiplication,
-explicit FP8 baselines, a validated quadruple-precision reference, error
-distributions, and instruction/CSR analysis. Those results will support the
-final article and the 15-minute presentation.
+The next milestones will integrate this ALU into a vector execution model with
+the proposed Zvtakum instructions and evaluate it experimentally against
+IEEE 754 formats.
 
 \section*{Reproducibility}
 Run \code{make verify} from the repository root. Offline tests require only
@@ -310,17 +358,41 @@ value table, and CLI demonstration output are stored under \code{results/}.
 The repository is available to the project collaborators at
 \url{https://github.com/pedrohcali/aoc-takum-rvv}.
 
-\begin{thebibliography}{3}
-\bibitem{takum}
-L. Hunhold, ``Beating Posits at Their Own Game: Takum Arithmetic,'' in
-\emph{Next Generation Arithmetic}, LNCS, vol. 14666. Springer, 2024,
-pp. 1 to 51, doi: 10.1007/978-3-031-72709-2\_1.
-[Online]. Available: \url{https://arxiv.org/abs/2404.18603}
+\begin{thebibliography}{10}
+\bibitem{ieee754}
+``IEEE Standard for Floating-Point Arithmetic,'' \emph{IEEE Std 754-2008},
+pp. 1--70, Aug. 2008, doi: 10.1109/IEEESTD.2008.4610935.
+\bibitem{bfloat16}
+S. Wang and P. Kanwar, ``BFloat16: The secret to high performance on Cloud
+TPUs,'' Google Cloud Blog, Aug. 2019. [Online]. Available:
+\url{https://cloud.google.com/blog/products/ai-machine-learning/bfloat16-the-secret-to-high-performance-on-cloud-tpus}
+\bibitem{ofp8}
+P. Micikevicius, S. Oberman, P. Dubey \emph{et al.}, ``OCP 8-bit Floating Point
+Specification (OFP8),'' Open Compute Project, Jun. 2023.
 \bibitem{simd}
 L. Hunhold, ``Streamlining SIMD ISA Extensions with Takum Arithmetic:
 A Case Study on Intel AVX10.2,'' in \emph{2025 14th International Conference on
-Modern Circuits and Systems Technologies (MOCAST)}, 2025, pp. 1 to 6.
+Modern Circuits and Systems Technologies (MOCAST)}, 2025, pp. 1--6.
 [Online]. Available: \url{https://arxiv.org/abs/2503.14067}
+\bibitem{takum}
+L. Hunhold, ``Beating Posits at Their Own Game: Takum Arithmetic,'' in
+\emph{Next Generation Arithmetic}, LNCS, vol. 14666. Springer, 2024,
+pp. 1--51, doi: 10.1007/978-3-031-72709-2\_1.
+[Online]. Available: \url{https://arxiv.org/abs/2404.18603}
+\bibitem{rvv}
+``RISC-V `V' Vector Extension,'' version 1.0, RISC-V International, Sep. 2021.
+[Online]. Available: \url{https://github.com/riscvarchive/riscv-v-spec/releases/tag/v1.0}
+\bibitem{posit}
+J. L. Gustafson and I. Yonemoto, ``Beating Floating Point at Its Own Game:
+Posit Arithmetic,'' \emph{Supercomputing Frontiers and Innovations}, vol. 4,
+no. 2, pp. 71--86, Jun. 2017, doi: 10.14529/jsfi170206.
+\bibitem{takumvhdl}
+L. Hunhold, ``Design and Implementation of a Takum Arithmetic Hardware Codec
+in VHDL,'' Dec. 2024. [Online]. Available: \url{https://arxiv.org/abs/2408.10594}
+\bibitem{fphub}
+J. Hormigo \emph{et al.}, ``FPHUB-RISCV: HUB Floating-Point Unit in RISC-V
+Platform -- Format definition,'' in \emph{RISC-V Summit Europe}, Paris, France,
+May 2025.
 \bibitem{libtakum}
 L. Hunhold, ``libtakum: Takum arithmetic C99 reference implementation,''
 version 2.0.0, revision \code{776ac0c} (full hash in the validation report).

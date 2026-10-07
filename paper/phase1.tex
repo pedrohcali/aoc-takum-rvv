@@ -17,6 +17,11 @@
 \usetikzlibrary{positioning,arrows.meta}
 \newcommand{\NaR}{\mathrm{NaR}}
 \newcommand{\code}[1]{\texttt{#1}}
+% Explicit break between author rows; each row is centered.
+\makeatletter
+\newcommand{\linebreakand}{\end{@IEEEauthorhalign}\hfill\mbox{}\par
+  \mbox{}\hfill\begin{@IEEEauthorhalign}}
+\makeatother
 \usepackage[hidelinks]{hyperref}
 \begin{document}
 
@@ -35,7 +40,7 @@ Belo Horizonte, Brazil}
 \IEEEauthorblockA{\textit{Department of Electronic Engineering} \\
 \textit{Universidade Federal de Minas Gerais}\\
 Belo Horizonte, Brazil}
-\and
+\linebreakand
 \IEEEauthorblockN{Pedro Henrique Campos Lima}
 \IEEEauthorblockA{\textit{Department of Electronic Engineering} \\
 \textit{Universidade Federal de Minas Gerais}\\

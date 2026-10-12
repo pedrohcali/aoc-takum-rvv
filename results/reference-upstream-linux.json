@@ -1,0 +1,107 @@
+{
+  "reference": "https://github.com/takum-arithmetic/libtakum.git",
+  "revision": "776ac0ca7855f640100731ed8bbb0c7cf83b2d94",
+  "seed": 20260928,
+  "samples_per_large_width": 20000,
+  "generated_at_utc": "2026-10-10T23:01:20.715149+00:00",
+  "python": "3.12.3",
+  "platform": "Linux-5.15.153.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "duration_seconds": 14.837,
+  "groups": [
+    {
+      "kind": "decode",
+      "width": 8,
+      "cases": 256,
+      "mismatches": 0
+    },
+    {
+      "kind": "encode",
+      "width": 8,
+      "cases": 20261,
+      "mismatches": 0
+    },
+    {
+      "kind": "add",
+      "width": 8,
+      "cases": 65536,
+      "mismatches": 0
+    },
+    {
+      "kind": "sub",
+      "width": 8,
+      "cases": 65536,
+      "mismatches": 0
+    },
+    {
+      "kind": "mul",
+      "width": 8,
+      "cases": 65536,
+      "mismatches": 0
+    },
+    {
+      "kind": "decode",
+      "width": 16,
+      "cases": 65536,
+      "mismatches": 0
+    },
+    {
+      "kind": "encode",
+      "width": 16,
+      "cases": 85541,
+      "mismatches": 0
+    },
+    {
+      "kind": "add",
+      "width": 16,
+      "cases": 20064,
+      "mismatches": 0
+    },
+    {
+      "kind": "sub",
+      "width": 16,
+      "cases": 20064,
+      "mismatches": 0
+    },
+    {
+      "kind": "mul",
+      "width": 16,
+      "cases": 20064,
+      "mismatches": 0
+    },
+    {
+      "kind": "decode",
+      "width": 32,
+      "cases": 20101,
+      "mismatches": 0
+    },
+    {
+      "kind": "encode",
+      "width": 32,
+      "cases": 40106,
+      "mismatches": 0
+    },
+    {
+      "kind": "add",
+      "width": 32,
+      "cases": 20064,
+      "mismatches": 0
+    },
+    {
+      "kind": "sub",
+      "width": 32,
+      "cases": 20064,
+      "mismatches": 0
+    },
+    {
+      "kind": "mul",
+      "width": 32,
+      "cases": 20064,
+      "mismatches": 0
+    }
+  ],
+  "total_cases": 548793,
+  "total_mismatches": 0,
+  "first_mismatches": [],
+  "reference_mode": "upstream",
+  "patch_sha256": null
+}

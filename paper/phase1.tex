@@ -1,5 +1,5 @@
 \documentclass[conference]{IEEEtran}
-\IEEEoverridecommandlockouts
+%\IEEEoverridecommandlockouts
 % The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
 \usepackage{cite}
 \usepackage{amsmath,amssymb,amsfonts}
@@ -23,6 +23,8 @@
   \mbox{}\hfill\begin{@IEEEauthorhalign}}
 \makeatother
 \usepackage[hidelinks]{hyperref}
+\hypersetup{pdftitle={An Exact Functional Model of Linear Takum Arithmetic Toward a RISC-V Vector Extension},
+  pdfauthor={A. S. Fernandes, B. L. Soares, L. R. P. Ayala, P. H. C. Lima, P. L. Ozelin}}
 \begin{document}
 
 \title{An Exact Functional Model of Linear Takum Arithmetic Toward a RISC-V Vector Extension}
@@ -96,11 +98,13 @@ operands inside a simplified vector model, in three milestones: representation
 and scalar arithmetic, then vector instructions, then an experimental comparison
 with other formats. This report covers the first.
 
-Hunhold defines two interpretations of the same field structure, linear and
-logarithmic~\cite{takum}. We use the linear one. The AVX10.2 study also uses
-linear takums in its dynamic-range comparison~\cite{simd}, and since the course
-guidelines leave the variant open, the code and documentation state the choice
-explicitly.
+Hunhold defines two interpretations of the same field structure, logarithmic
+and linear, and asks implementations to state which one they
+support~\cite{takum}. We use the linear one. The course guidelines name no
+variant, but they call the last field fraction bits $F$, which is the notation
+of the linear definition; the logarithmic definition calls it the mantissa
+$M$~\cite{takum}. The AVX10.2 study draws the same $F$ field and uses linear
+takums in its dynamic-range comparison~\cite{simd}.
 
 What this milestone delivers is an arithmetic module that implements the fields
 directly and is easy to inspect, along with reproducible evidence of its
@@ -157,35 +161,37 @@ nonzero value is
  x=\bigl[(1-3S)+f\bigr]2^e.
 \end{equation}
 
-Short encodings can end inside $C$. The missing characteristic bits are then
-read as trailing zeros, which we call \emph{ghost bits}; no fraction is stored,
-and the software reports how many zeros it inserted. Zero-extension invariance
-justifies this. Definition 8 in~\cite{takum} assumes $n\ge 12$, and shorter
-strings are zero-extended to 12 bits before decoding~\cite{simd}. Appending only
-the zeros needed to complete $C$ yields the same value.
+Short encodings can end inside $C$. Definition 8 in~\cite{takum} is stated for
+$n\ge 12$ and covers shorter strings by reading the missing bits as zeros, which
+it calls \emph{ghost bits}; takums are invariant under this zero
+extension~\cite{simd}. Our decoder appends only the zeros needed to complete
+$C$, which yields the same value. No fraction is stored in that case, and the
+software reports how many zeros it inserted.
 
 All-zero bits encode zero, and a set sign bit followed by zeros encodes $\NaR$
 (not a real). Negation is two's complement modulo $2^n$, which leaves both
-unchanged. Table~\ref{tab:examples} lists selected T8 codes; the full 256-entry
-table is exported as a CSV file.
+unchanged. Table~\ref{tab:examples} lists the fields extracted from selected T8 codes;
+the full 256-entry table is exported as a CSV file.
 
 \begin{table}[t]
-\caption{Selected linear T8 representations}
+\caption{Fields extracted from selected linear T8 codes. Underlined zeros
+are ghost bits; a dash marks an empty field.}
 \label{tab:examples}
 \centering
-\begin{tabular}{lll}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llllllrl}
 \toprule
-Hex & Binary & Exact value\\
+Hex & $S$ & $D$ & $R$ & $C$ & $F$ & $e$ & Exact value\\
 \midrule
-\code{00} & \code{00000000} & $0$\\
-\code{01} & \code{00000001} & $2^{-239}$\\
-\code{40} & \code{01000000} & $1$\\
-\code{44} & \code{01000100} & $3/2$\\
-\code{48} & \code{01001000} & $2$\\
-\code{7f} & \code{01111111} & $2^{239}$\\
-\code{80} & \code{10000000} & $\NaR$\\
-\code{c0} & \code{11000000} & $-1$\\
-\code{ff} & \code{11111111} & $-2^{-239}$\\
+\code{00} & \code{0} & \code{0} & \code{000} & \multicolumn{3}{l}{(special)} & $0$\\
+\code{01} & \code{0} & \code{0} & \code{000} & \code{001\underline{0000}} & -- & $-239$ & $2^{-239}$\\
+\code{40} & \code{0} & \code{1} & \code{000} & -- & \code{000} & $0$ & $1$\\
+\code{44} & \code{0} & \code{1} & \code{000} & -- & \code{100} & $0$ & $3/2$\\
+\code{48} & \code{0} & \code{1} & \code{001} & \code{0} & \code{00} & $1$ & $2$\\
+\code{7f} & \code{0} & \code{1} & \code{111} & \code{111\underline{0000}} & -- & $239$ & $2^{239}$\\
+\code{80} & \code{1} & \code{0} & \code{000} & \multicolumn{3}{l}{(special)} & $\NaR$\\
+\code{c0} & \code{1} & \code{1} & \code{000} & -- & \code{000} & $-1$ & $-1$\\
+\code{ff} & \code{1} & \code{1} & \code{111} & \code{111\underline{0000}} & -- & $-240$ & $-2^{-239}$\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -198,8 +204,8 @@ directly; a negative value is the two's complement of the code of its magnitude.
 
 Rounding is to nearest with ties to even on the bit stream, as in
 \code{libtakum} 2.0.0. The decision is ours, not the paper's: Algorithm 1
-in~\cite{takum} rounds on the first discarded bit and does not specify how ties
-break. Rational remainders let the tests separate exact ties from values
+in~\cite{takum} increments the code whenever the first discarded bit is set,
+which sends every exact tie upward. Rational remainders let the tests separate exact ties from values
 arbitrarily close to them.
 
 Once truncation cuts into the characteristic, bit-stream rounding no longer
@@ -208,7 +214,8 @@ represent $2^{15}$ and $2^{17}$. The encoder switches between them at $2^{16}$,
 while the arithmetic midpoint is $81920$. We accept this as part of the
 numerical contract and test it explicitly.
 
-Saturation keeps finite values finite. A nonzero magnitude below the smallest
+Saturation keeps finite values finite, as Algorithm 1 in~\cite{takum} also
+requires. A nonzero magnitude below the smallest
 representable one rounds to that minimum with its sign preserved, and one above
 the largest rounds to the maximum, so neither zero nor $\NaR$ can result. Exact
 zero stays zero. Nonfinite external inputs become $\NaR$, which propagates
@@ -217,8 +224,9 @@ through all three operations, multiplication by zero included.
 \section{Methodology and Proposed Architecture}
 \subsection{Functional organization}
 The model is written in Python 3.10 or newer and uses only the standard library.
-Fig.~\ref{fig:architecture} shows the arithmetic path. Codec and ALU take and
-return raw unsigned bit patterns, and exact fractions exist only inside them.
+Fig.~\ref{fig:architecture} shows the arithmetic path. The ALU takes and
+returns raw unsigned bit patterns, and exact fractions exist only between its
+decoding and rounding steps.
 The command-line interface (CLI) also accepts decimal strings and fractions, so
 inputs never pass unintentionally through binary64.
 
@@ -242,10 +250,19 @@ functional responsibilities, not hardware stages or cycle latency.}
 \end{figure}
 
 \code{TakumFormat} handles field extraction, encoding, decoding, negation, and
-width conversion. \code{TakumALU} decodes two operands, adds, subtracts, or
+width conversion. One width-parametric routine serves all three formats: $S$,
+$D$, $R$, and $C$ are fixed by the 12 most significant bits, and every remaining
+bit is fraction. \code{TakumALU} decodes two operands, adds, subtracts, or
 multiplies them exactly, and rounds the result once. In a sequence of
 operations, each one rounds its own output. This milestone has no fused
 operation and no widened dot-product accumulator.
+
+These operations fix the per-element semantics of the basic arithmetic
+instructions in the proposed Zvtakum set. Add, subtract, and multiply are what
+\code{vtadd.vv}, \code{vtsub.vv}, and \code{vtmul.vv} will apply to each
+element, with the element width selecting T8, T16, or T32, and narrowing width
+conversion is the element operation of \code{vncvt.t.t}. Only \code{vtdot.vv}
+needs arithmetic beyond this milestone.
 
 Every result carries status metadata: inexact, saturated below or above the
 magnitude range, or $\NaR$. These flags are program diagnostics, not RISC-V
@@ -275,9 +292,9 @@ Repeated inputs count as comparisons, not as distinct values. The seed is
 20260928.
 
 \subsection{Reference portability correction}
-On the ARM Mac used for development, the unmodified reference failed a basic
-smoke test: \code{takum32\_from\_float64(1.5)} returned \code{0x40000000}, the
-encoding of 1, instead of \code{0x44000000}. On that platform \code{long double}
+The unmodified reference failed a basic smoke test on the ARM Mac used for
+development. Encoding 1.5 with \code{takum32\_from\_float64} returned
+\code{0x40000000}, the encoding of 1, instead of \code{0x44000000}. On that platform \code{long double}
 has only \code{double} precision. The extended-float fraction extraction of the
 reference increments its exponent after it has already normalized the integer
 mantissa, which shifts the fraction. The routine also assumes a particular
@@ -288,8 +305,10 @@ and an explicit ties-to-even check; T32 needs at most 27 output fraction bits.
 Characteristic decoding and the three arithmetic operators of the reference are
 untouched. The patch goes into a separate copy, so the original checkout stays
 clean, and the repository keeps the patch, its hash in the validation report,
-the upstream ISC license, and the failed original run. The agreement we report
-is with the \emph{corrected} reference, not with the unmodified library.
+the upstream ISC license, and the failed original run. On Linux x86-64, where
+\code{long double} is the 80-bit x87 format, the unmodified library needs no
+patch and agrees with our model on every comparison. On the ARM Mac the
+agreement holds only for the \emph{corrected} copy.
 
 \section{Results and Discussion}
 On the ARM Mac with Python 3.14.5, all 20 offline tests passed with no failures,
@@ -297,8 +316,8 @@ errors, or skips. They include 65,792 exhaustive T8/T16 round-trip patterns and
 196,608 T8 operations checked against the oracle. Table~\ref{tab:validation}
 breaks down the differential coverage. None of the 548,793 comparisons
 mismatched against the corrected reference. On the same inputs the original
-library diverged in 156,294 cases, and we keep that run as evidence of the
-portability bug. Continuous integration repeats the differential suite on Linux
+library diverged in 156,294 cases on the ARM Mac and in none on Linux x86-64,
+and we keep both runs as evidence that the bug is one of portability. Continuous integration repeats the differential suite on Linux
 x86-64 and macOS arm64 with Python 3.13, again with zero mismatches.
 
 \begin{table}[t]
@@ -355,8 +374,8 @@ tests need only Python; the differential tests also need Git, a C99 compiler,
 and network access for the first checkout of the reference. \code{make paper}
 builds this paper with Tectonic. Machine-readable reports, the full T8 value
 table, and the CLI demonstration output are stored under \code{results/}.
-Project collaborators can access the repository at
-\url{https://github.com/pedrohcali/aoc-takum-rvv}.
+The source code, tests, and reports are in the source archive submitted with
+this paper, a snapshot of the project repository.
 
 \begin{thebibliography}{10}
 \bibitem{ieee754}
@@ -372,7 +391,7 @@ Specification (OFP8),'' Open Compute Project, Jun. 2023.
 \bibitem{simd}
 L. Hunhold, ``Streamlining SIMD ISA Extensions with Takum Arithmetic:
 A Case Study on Intel AVX10.2,'' in \emph{2025 14th International Conference on
-Modern Circuits and Systems Technologies (MOCAST)}, 2025, pp. 1--6.
+Modern Circuits and Systems Technologies (MOCAST)}, Jun. 2025, pp. 1--6.
 [Online]. Available: \url{https://arxiv.org/abs/2503.14067}
 \bibitem{takum}
 L. Hunhold, ``Beating Posits at Their Own Game: Takum Arithmetic,'' in
@@ -395,7 +414,8 @@ Platform -- Format definition,'' in \emph{RISC-V Summit Europe}, Paris, France,
 May 2025.
 \bibitem{libtakum}
 L. Hunhold, ``libtakum: Takum arithmetic C99 reference implementation,''
-version 2.0.0, revision \code{776ac0c} (full hash in the validation report).
+version 2.0.0, Nov. 2025, revision \code{776ac0c} (full hash in the validation
+report).
 [Online]. Available: \url{https://github.com/takum-arithmetic/libtakum}
 \end{thebibliography}
 \end{document}

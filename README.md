@@ -47,8 +47,9 @@ make verify    # os três passos anteriores
 
 **A referência usa uma correção de portabilidade explícita.** A versão original da
 libtakum falha na codificação de 1.5 em T32 no Mac ARM usado na validação. O patch,
-a execução original e a execução corrigida estão preservados. Não se afirma
-concordância com a biblioteca original sem modificações. Consulte
+a execução original e a execução corrigida estão preservados. Em Linux x86-64 a
+biblioteca original, sem patch, concorda em todas as comparações; no Mac ARM a
+concordância vale apenas para a cópia corrigida. Consulte
 [Validação](docs/VALIDATION.md).
 
 ## Organização

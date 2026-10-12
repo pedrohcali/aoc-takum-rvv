@@ -63,6 +63,8 @@ da referência. O diretório original é mantido limpo; o patch é aplicado a um
 
 - `results/reference-upstream-macos.json`: execução sem patch, com 156.294
   divergências em 548.793 comparações na plataforma registrada.
+- `results/reference-upstream-linux.json`: execução sem patch em Linux x86-64
+  (`long double` x87 de 80 bits), com zero divergências nas mesmas 548.793 comparações.
 - `results/reference-validation.json`: execução com patch, com zero divergências.
 - `scripts/libtakum-portable.patch`: alteração completa, revisável.
 - `scripts/libtakum-LICENSE`: licença ISC do código de referência presente no patch.
@@ -80,10 +82,11 @@ Para repetir a referência corrigida:
 python3 scripts/validate_reference.py
 ```
 
-O resultado sem patch pode variar por compilador/arquitetura. A concordância
-reportada é com a referência **corrigida**, nunca uma alegação de que o upstream
-original passou nos testes. O patch é local a este projeto e não foi enviado aos
-mantenedores da biblioteca.
+O resultado sem patch varia por compilador/arquitetura: o upstream original
+diverge no Mac ARM e concorda em todas as comparações no Linux x86-64 registrado.
+No Mac ARM, a concordância reportada é com a referência **corrigida**; não se
+afirma que o upstream original passa nos testes em qualquer plataforma. O patch
+é local a este projeto e não foi enviado aos mantenedores da biblioteca.
 
 ## Limites da evidência
 

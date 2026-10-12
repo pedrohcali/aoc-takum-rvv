@@ -80,8 +80,9 @@ A negação usa complemento de dois, módulo 2^n. Zero e NaR são invariantes.
 8. Aplicar complemento de dois se o sinal original era negativo.
 
 **Decisão de desempate:** adotamos nearest/even da libtakum 2.0.0. O pseudocódigo
-do algoritmo 1 do artigo de 2024 apenas incrementa quando o primeiro bit
-removido é 1; não explicita esse desempate. A decisão não é atribuída ao artigo.
+do algoritmo 1 do artigo de 2024 incrementa sempre que o primeiro bit removido
+é 1, o que leva todo empate exato para cima. A decisão diverge do pseudocódigo
+e não é atribuída ao artigo.
 
 O arredondamento no fluxo de bits não equivale sempre à menor distância real.
 Por exemplo, T8 representa 2^15 (`0x60`) e 2^17 (`0x61`); o ponto de decisão do

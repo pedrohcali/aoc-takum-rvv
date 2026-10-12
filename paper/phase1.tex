@@ -23,6 +23,9 @@
   \mbox{}\hfill\begin{@IEEEauthorhalign}}
 \makeatother
 \usepackage[hidelinks]{hyperref}
+\usepackage{etoolbox}
+\patchcmd{\abstract}{---}{: }{}{\errmessage{Abstract punctuation patch failed}}
+\patchcmd{\IEEEkeywords}{---}{: }{}{\errmessage{Keywords punctuation patch failed}}
 \hypersetup{pdftitle={An Exact Functional Model of Linear Takum Arithmetic Toward a RISC-V Vector Extension},
   pdfauthor={A. S. Fernandes, B. L. Soares, L. R. P. Ayala, P. H. C. Lima, P. L. Ozelin}}
 \begin{document}
@@ -175,7 +178,7 @@ the full 256-entry table is exported as a CSV file.
 
 \begin{table}[t]
 \caption{Fields extracted from selected linear T8 codes. Underlined zeros
-are ghost bits; a dash marks an empty field.}
+are ghost bits; the empty-set symbol marks an empty field.}
 \label{tab:examples}
 \centering
 \setlength{\tabcolsep}{4pt}
@@ -184,14 +187,14 @@ are ghost bits; a dash marks an empty field.}
 Hex & $S$ & $D$ & $R$ & $C$ & $F$ & $e$ & Exact value\\
 \midrule
 \code{00} & \code{0} & \code{0} & \code{000} & \multicolumn{3}{l}{(special)} & $0$\\
-\code{01} & \code{0} & \code{0} & \code{000} & \code{001\underline{0000}} & -- & $-239$ & $2^{-239}$\\
-\code{40} & \code{0} & \code{1} & \code{000} & -- & \code{000} & $0$ & $1$\\
-\code{44} & \code{0} & \code{1} & \code{000} & -- & \code{100} & $0$ & $3/2$\\
+\code{01} & \code{0} & \code{0} & \code{000} & \code{001\underline{0000}} & $\varnothing$ & $-239$ & $2^{-239}$\\
+\code{40} & \code{0} & \code{1} & \code{000} & $\varnothing$ & \code{000} & $0$ & $1$\\
+\code{44} & \code{0} & \code{1} & \code{000} & $\varnothing$ & \code{100} & $0$ & $3/2$\\
 \code{48} & \code{0} & \code{1} & \code{001} & \code{0} & \code{00} & $1$ & $2$\\
-\code{7f} & \code{0} & \code{1} & \code{111} & \code{111\underline{0000}} & -- & $239$ & $2^{239}$\\
+\code{7f} & \code{0} & \code{1} & \code{111} & \code{111\underline{0000}} & $\varnothing$ & $239$ & $2^{239}$\\
 \code{80} & \code{1} & \code{0} & \code{000} & \multicolumn{3}{l}{(special)} & $\NaR$\\
-\code{c0} & \code{1} & \code{1} & \code{000} & -- & \code{000} & $-1$ & $-1$\\
-\code{ff} & \code{1} & \code{1} & \code{111} & \code{111\underline{0000}} & -- & $-240$ & $-2^{-239}$\\
+\code{c0} & \code{1} & \code{1} & \code{000} & $\varnothing$ & \code{000} & $-1$ & $-1$\\
+\code{ff} & \code{1} & \code{1} & \code{111} & \code{111\underline{0000}} & $\varnothing$ & $-240$ & $-2^{-239}$\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -380,7 +383,7 @@ this paper, a snapshot of the project repository.
 \begin{thebibliography}{10}
 \bibitem{ieee754}
 ``IEEE Standard for Floating-Point Arithmetic,'' \emph{IEEE Std 754-2008},
-pp. 1--70, Aug. 2008, doi: 10.1109/IEEESTD.2008.4610935.
+pp. 1 to 70, Aug. 2008, doi: 10.1109/IEEESTD.2008.4610935.
 \bibitem{bfloat16}
 S. Wang and P. Kanwar, ``BFloat16: The secret to high performance on Cloud
 TPUs,'' Google Cloud Blog, Aug. 2019. [Online]. Available:
@@ -391,12 +394,12 @@ Specification (OFP8),'' Open Compute Project, Jun. 2023.
 \bibitem{simd}
 L. Hunhold, ``Streamlining SIMD ISA Extensions with Takum Arithmetic:
 A Case Study on Intel AVX10.2,'' in \emph{2025 14th International Conference on
-Modern Circuits and Systems Technologies (MOCAST)}, Jun. 2025, pp. 1--6.
+Modern Circuits and Systems Technologies (MOCAST)}, Jun. 2025, pp. 1 to 6.
 [Online]. Available: \url{https://arxiv.org/abs/2503.14067}
 \bibitem{takum}
 L. Hunhold, ``Beating Posits at Their Own Game: Takum Arithmetic,'' in
 \emph{Next Generation Arithmetic}, LNCS, vol. 14666. Springer, 2024,
-pp. 1--51, doi: 10.1007/978-3-031-72709-2\_1.
+pp. 1 to 51, doi: 10.1007/978-3-031-72709-2\_1.
 [Online]. Available: \url{https://arxiv.org/abs/2404.18603}
 \bibitem{rvv}
 ``RISC-V `V' Vector Extension,'' version 1.0, RISC-V International, Sep. 2021.
@@ -404,13 +407,13 @@ pp. 1--51, doi: 10.1007/978-3-031-72709-2\_1.
 \bibitem{posit}
 J. L. Gustafson and I. Yonemoto, ``Beating Floating Point at Its Own Game:
 Posit Arithmetic,'' \emph{Supercomputing Frontiers and Innovations}, vol. 4,
-no. 2, pp. 71--86, Jun. 2017, doi: 10.14529/jsfi170206.
+no. 2, pp. 71 to 86, Jun. 2017, doi: 10.14529/jsfi170206.
 \bibitem{takumvhdl}
 L. Hunhold, ``Design and Implementation of a Takum Arithmetic Hardware Codec
 in VHDL,'' Dec. 2024. [Online]. Available: \url{https://arxiv.org/abs/2408.10594}
 \bibitem{fphub}
 J. Hormigo \emph{et al.}, ``FPHUB-RISCV: HUB Floating-Point Unit in RISC-V
-Platform -- Format definition,'' in \emph{RISC-V Summit Europe}, Paris, France,
+Platform: Format definition,'' in \emph{RISC-V Summit Europe}, Paris, France,
 May 2025.
 \bibitem{libtakum}
 L. Hunhold, ``libtakum: Takum arithmetic C99 reference implementation,''

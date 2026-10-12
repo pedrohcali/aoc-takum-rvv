@@ -63,18 +63,19 @@ concordância vale apenas para a cópia corrigida. Consulte
 | `scripts/` | Validação diferencial e exportação de resultados |
 | `results/` | Evidências reproduzíveis da primeira entrega |
 | `docs/SPECIFICATION.md` | Especificação numérica e decisões |
-| `docs/DELIVERY-1.md` | Checklist da entrega e pendências da equipe |
+| `docs/DELIVERY-1.md` | Correspondência com o enunciado e escopo das próximas etapas |
 | `docs/DEMO.md` | Roteiro comentado da demonstração |
 | `paper/phase1.tex` | Artigo parcial em inglês, formato IEEE |
 | `output/pdf/phase1.pdf` | Artigo parcial compilado |
-| `INPUTS/` | Enunciado, artigos de referência e template IEEE |
+| `INPUTS/` | Enunciado, artigos de referência e template IEEE (fora do ZIP de entrega) |
 
 Para compilar o artigo, instale [Tectonic](https://tectonic-typesetting.github.io/)
 e execute `make paper` (a primeira compilação baixa os pacotes LaTeX).
 
-`make package` gera `output/entrega-1.zip` com os arquivos versionados. Antes de
-empacotar arquivos novos, adicione-os ao Git. O pacote inclui código, testes,
-documentação, resultados e PDF; não inclui o histórico Git ou o cache da referência.
+`make package` gera `output/entrega-1.zip` com os arquivos versionados, exceto
+`INPUTS/`, que fica apenas no repositório. Antes de empacotar arquivos novos,
+adicione-os ao Git. O pacote inclui código, testes, documentação, resultados e o
+artigo (fonte e PDF); não inclui o histórico Git ou o cache da referência.
 
 ## Modelo adotado
 

@@ -1,0 +1,433 @@
+\documentclass[conference]{IEEEtran}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+% Project additions to the IEEE template.
+\usepackage[T1]{fontenc}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta}
+\usepackage{pgfplots}
+\usepgfplotslibrary{groupplots}
+\pgfplotsset{compat=1.18}
+\newcommand{\NaR}{\mathrm{NaR}}
+\newcommand{\code}[1]{\texttt{#1}}
+\makeatletter
+\newcommand{\linebreakand}{\end{@IEEEauthorhalign}\hfill\mbox{}\par
+  \mbox{}\hfill\begin{@IEEEauthorhalign}}
+\makeatother
+\usepackage[hidelinks]{hyperref}
+\usepackage{etoolbox}
+\patchcmd{\abstract}{---}{: }{}{\errmessage{Abstract punctuation patch failed}}
+\patchcmd{\IEEEkeywords}{---}{: }{}{\errmessage{Keywords punctuation patch failed}}
+% Benchmark numbers come from scripts/summarize_benchmark.py. Until the
+% real benchmark run exists, the synthetic offline run is used and marked.
+\IfFileExists{../results/spmv-macros.tex}{%
+  \input{../results/spmv-macros.tex}\def\BenchCDF{../results/spmv-cdf.csv}\def\BenchDraft{}}{%
+  \input{../results/synthetic-macros.tex}\def\BenchCDF{../results/synthetic-cdf.csv}%
+  \def\BenchDraft{\textcolor{red}{[DRAFT: synthetic matrices]} }}
+\hypersetup{pdftitle={Takum Arithmetic in the RISC-V Vector Extension},
+  pdfauthor={A. S. Fernandes, B. L. Soares, L. R. P. Ayala, P. H. C. Lima, P. L. Ozelin}}
+\begin{document}
+
+\title{Takum Arithmetic in the RISC-V Vector Extension: Instruction Design and
+Sparse Matrix-Vector Evaluation}
+\author{\IEEEauthorblockN{Arthur dos Santos Fernandes}
+\IEEEauthorblockA{\textit{Department of Electronic Engineering} \\
+\textit{Universidade Federal de Minas Gerais}\\
+Belo Horizonte, Brazil}
+\and
+\IEEEauthorblockN{Bruno Lima Soares}
+\IEEEauthorblockA{\textit{Department of Electronic Engineering} \\
+\textit{Universidade Federal de Minas Gerais}\\
+Belo Horizonte, Brazil}
+\and
+\IEEEauthorblockN{Lucas Rodrigues Prosperi Ayala}
+\IEEEauthorblockA{\textit{Department of Electronic Engineering} \\
+\textit{Universidade Federal de Minas Gerais}\\
+Belo Horizonte, Brazil}
+\linebreakand
+\IEEEauthorblockN{Pedro Henrique Campos Lima}
+\IEEEauthorblockA{\textit{Department of Electronic Engineering} \\
+\textit{Universidade Federal de Minas Gerais}\\
+Belo Horizonte, Brazil}
+\and
+\IEEEauthorblockN{Pedro Lopes Ozelin}
+\IEEEauthorblockA{\textit{Department of Electronic Engineering} \\
+\textit{Universidade Federal de Minas Gerais}\\
+Belo Horizonte, Brazil}
+}
+
+\maketitle
+
+\begin{abstract}
+\BenchDraft Takum is a tapered-precision number format with one decoding scheme
+for every bit width. We study it as the element type of a simplified RISC-V
+vector extension. An exact functional model implements linear takums at 8, 16,
+32, and 64 bits and five proposed instructions: element-wise add, subtract, and
+multiply, a dot product that accumulates exactly and rounds once to twice the
+element width, and a narrowing conversion. The instructions reuse the RVV
+encoding layout under a custom opcode and need no new control state: the element
+width selects the format, and saturation and the single NaR value replace the
+rounding mode and exception flags of IEEE 754. We compare a CSR sparse
+matrix-vector kernel in takum and in OFP8, binary16, and binary32 over
+\BenchMatrices{} real matrices from the Matrix Market, measuring the relative
+error against a binary128 reference and the dynamic instruction count. Takum
+results were always finite, while E4M3, E5M2, and binary16 produced a NaN or an
+infinity for \BenchInfEFourMThree\%, \BenchInfEFiveMTwo\%, and
+\BenchInfFPSixteen\% of the matrices. Where the IEEE formats stay in range they
+are usually more accurate at 8 and 16 bits; at 32 bits takum is more accurate
+for \BenchBetterTThirtyTwoFPThirtyTwo{} matrices and less for
+\BenchWorseTThirtyTwoFPThirtyTwo. The fused dot product removes
+\BenchVecReductionFPSixteen\% to \BenchVecReductionEFourMThree\% of the vector
+instructions of the kernel.
+\end{abstract}
+\begin{IEEEkeywords}
+Takum, tapered precision, RISC-V vector extension, SpMV, functional simulation
+\end{IEEEkeywords}
+
+\section{Introduction}
+Vector units now support many low-precision floating-point formats: IEEE 754
+binary16~\cite{ieee754}, bfloat16, and the OFP8 types E4M3 and
+E5M2~\cite{ofp8}. Each keeps the IEEE 754 framework and its exceptional values,
+and supporting all of them makes the instruction set larger and less
+regular~\cite{simd}. Takum arithmetic~\cite{takum} offers one alternative
+family: its dynamic range is almost independent of the bit width, and all widths
+share a decoder that reads at most the 12 most significant bits. In a study of
+Intel AVX10.2, Hunhold found takums more accurate than the AVX10.2 formats over
+sparse matrices from the SuiteSparse collection and proposed a smaller
+instruction set built on them, naming RISC-V vector extensions as future
+work~\cite{simd}.
+
+This paper takes up that suggestion for the RISC-V Vector extension
+(RVV)~\cite{rvv}. The project had three milestones: an exact scalar model of
+linear takums, a vector extension with five instructions (Zvtakum), and an
+experimental comparison with IEEE formats on sparse matrix-vector
+multiplication (SpMV). Our contributions are (i) an encoding and semantics for
+the five instructions that adds no control state to the ISA, (ii) a functional
+vector model in which the takum and IEEE kernels run under one instruction
+accounting, and (iii) an evaluation of accuracy and instruction count over the
+real sparse matrices. We make no claims about cycles,
+area, or power.
+
+\section{Related Work}
+Posits~\cite{posit} introduced tapered precision as an alternative to IEEE 754.
+Takums keep the accuracy of posits near unity while encoding numbers far from
+it more efficiently~\cite{takum}. Linear takums interpret the last field as a
+fraction~$F$; the logarithmic variant uses the same fields with a different
+value function~\cite{takum}. We implement the linear variant, which the AVX10.2
+study also uses~\cite{simd}.
+
+Hunhold proposed fused takum dot products that accumulate in twice the input
+width (\code{VDPPT8PT16} to \code{VDPPT32PT64}) and showed that one takum
+family removes most of the format-specific conversion instructions of
+AVX10.2~\cite{simd}. Takums have also been evaluated in sparse linear
+solvers~\cite{sparsesolvers}, and a VHDL codec has been
+described~\cite{takumvhdl}. In RISC-V, FPHUB~\cite{fphub} also departs from
+strict IEEE 754 compliance to reduce hardware cost, keeping an IEEE-like layout
+with a single rounding mode. The ratified RVV has no FP8 arithmetic; we
+therefore model FP8 conversions explicitly (Section~\ref{sec:baseline}).
+
+\section{Takum Representation and Scalar Arithmetic}
+An $n$-bit takum holds a sign bit $S$, a direction bit $D$, three regime bits
+read as $R$, $r$ characteristic bits read as $C$, and $p=n-5-r$ fraction bits
+read as $F$. With
+\begin{equation}
+ r=\begin{cases}R,&D=1\\7-R,&D=0\end{cases},\quad
+ c=\begin{cases}2^r-1+C,&D=1\\1-2^{r+1}+C,&D=0\end{cases},
+\end{equation}
+$e=(1-2S)(c+S)$ and $f=F2^{-p}$, a finite nonzero value is
+$x=[(1-3S)+f]\,2^e$. Short strings are extended with zero \emph{ghost bits}, so
+the same definition serves T8. All-zero bits encode $0$, a lone sign bit encodes
+$\NaR$ (not a real), and negation is two's complement.
+
+The scalar model (\code{TakumFormat}, \code{TakumALU}) computes with exact
+rationals and rounds each result once, to nearest with ties to even on the bit
+stream, as \code{libtakum}~\cite{libtakum} does. Finite values outside the range
+saturate to the largest or smallest magnitude and never become $0$ or $\NaR$;
+$\NaR$ propagates through every operation. The first milestone validated this
+model with an independent oracle for all $256^2$ T8 operand pairs, exhaustive T8
+and T16 round trips, and 548,793 differential comparisons against a pinned
+\code{libtakum} revision, with no mismatch. T64, needed as the accumulator of
+T32, uses the same width-parametric code; tests check that zero extension of
+every T8 pattern and of sampled T16 and T32 patterns preserves the value.
+
+\section{Proposed Architecture: Zvtakum}
+\subsection{Vector state and instructions}
+Zvtakum keeps the RVV 1.0 state unchanged: 32 vector registers of VLEN bits,
+\code{vl} and \code{vtype}. As for IEEE instructions, the element width SEW
+selects the format: SEW${}=8,16,32$ means T8, T16, T32. Table~\ref{tab:enc}
+lists the five instructions. They use the OP-V field layout
+(\code{funct6|vm|vs2|vs1|funct3|vd|opcode}) under the \emph{custom-2} major
+opcode, which RISC-V reserves for nonstandard extensions, so they cannot clash
+with standard encodings. Each \code{funct6} repeats that of the IEEE
+counterpart, and \code{funct3} is OPFVV.
+
+\begin{table}[t]
+\caption{Zvtakum instructions (opcode custom-2, funct3 OPFVV). funct6 repeats
+that of \code{vfadd}, \code{vfsub}, \code{vfmul}, \code{vfwmacc}, and VFUNARY0}
+\label{tab:enc}
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lll}
+\toprule
+Instruction & funct6 & Semantics\\
+\midrule
+\code{vtadd.vv} & \code{000000} & $v_d[i]=\mathrm{rd}(v_{s2}[i]+v_{s1}[i])$\\
+\code{vtsub.vv} & \code{000010} & $v_d[i]=\mathrm{rd}(v_{s2}[i]-v_{s1}[i])$\\
+\code{vtmul.vv} & \code{100100} & $v_d[i]=\mathrm{rd}(v_{s2}[i]\,v_{s1}[i])$\\
+\code{vtdot.vv} & \code{111100} & $v_d[0]=\mathrm{rd}_2(v_d[0]+\textstyle\sum_i v_{s2}[i]\,v_{s1}[i])$\\
+\code{vncvt.t.t} & \code{010010} & $v_d[i]=\mathrm{rd}(v_{s2}[i])$, $2\mathrm{SEW}\to\mathrm{SEW}$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Element-wise instructions apply the scalar ALU to the active elements; masked
+and tail elements are left undisturbed. \code{vtdot.vv} reads SEW-bit sources
+and a $2\mathrm{SEW}$-bit accumulator in $v_d[0]$ (T8 to T16, T16 to T32, T32
+to T64); the sum of products is exact and rounded once ($\mathrm{rd}_2$), as in
+Hunhold's fused dot products~\cite{simd}. \code{vncvt.t.t} narrows with the
+same rounding and saturation; widening is exact zero extension and needs no
+instruction in our kernels.
+
+\subsection{Control and status state}
+The F extension couples every IEEE instruction to \code{fcsr}: a 3-bit
+rounding mode \code{frm} with five modes and the flags NV, DZ, OF, UF, and
+NX~\cite{rvunpriv}. Zvtakum reads and writes none of it. There is one rounding
+rule. Invalid results are $\NaR$, carried in the data. Overflow and underflow
+saturate, so results stay finite and ordered. There are no subnormals, signed
+zeros, infinities, or NaN payloads. Selecting E4M3 or E5M2 at SEW${}=8$ needs
+one more bit of format state in an IEEE design; with takums one format per width
+suffices.
+
+\subsection{Functional vector model}
+\code{VectorMachine} holds the register file as bytes, checks register-group
+alignment, and implements the RVV subset used by the kernels: \code{vsetvli},
+unit-stride and indexed loads and stores, \code{vmv.s.x}, and the IEEE baseline.
+Every instruction is counted, and scalar loop instructions are reported by the
+kernel so that totals are complete. The model is functional: it fixes
+architectural results, not timing.
+
+\subsection{SpMV kernel and IEEE baseline}\label{sec:baseline}
+The CSR kernel processes one row at a time. Per strip of at most VLMAX
+nonzeros it loads the values and the column offsets, gathers $x$ with
+\code{vluxei32}, and accumulates. The takum body is one \code{vtdot.vv}. The
+binary16 and binary32 body is \code{vfwmul.vv}, a \code{vsetvli} to $2\mathrm{SEW}$,
+and an ordered \code{vfredosum.vs}; for FP8 two \code{vfwcvt} widen the operands
+to binary16 first, because RVV has no FP8 arithmetic. Every format thus
+accumulates in $2\mathrm{SEW}$ (FP8 in binary16, binary16 in binary32, binary32
+in binary64), and a final narrowing pass converts $y$ to SEW. Each strip costs
+5 vector instructions with takums, 7 with binary16 or binary32, and 9 with FP8,
+plus the same scalar loop control. E4M3 follows OFP8 in non-saturating mode, so
+overflow gives NaN.
+
+\section{Evaluation Methodology}
+\emph{Matrices.} We planned to use, as~\cite{simd} did, every real matrix of
+the SuiteSparse collection~\cite{suitesparse} with at most 50,000 nonzeros, but
+its file server refused every download during the project. We therefore use the
+NIST Matrix Market~\cite{matrixmarket}, whose Harwell-Boeing, SPARSKIT, NEP,
+and miscellaneous sets are also part of SuiteSparse: every real, integer, or
+pattern matrix in coordinate format with at most 50,000 nonzeros after
+symmetric expansion, \BenchMatrices{} matrices with \BenchNnz{} nonzeros in
+total. The set is smaller and older than that of~\cite{simd}. Values are read
+from the Matrix Market text as exact decimals.
+
+\emph{Reference and error.} With $x$ the vector of ones, the reference
+$y_{\mathrm{ref}}$ rounds the inputs, every product, and every sum to binary128.
+For each format we report the relative error
+$\|y_f-y_{\mathrm{ref}}\|_2/\|y_{\mathrm{ref}}\|_2$ and, as in~\cite{simd}, the
+conversion error $\|A_f-A\|_F/\|A\|_F$. Norms are computed exactly with
+integers, so the measurement adds no error. A NaN or infinity in $y_f$ counts as
+an infinite error. Matrices with $y_{\mathrm{ref}}=0$ are excluded.
+
+\emph{Instruction count.} Dynamic counts use VLEN${}=128$ and LMUL${}=1$. To
+cover all matrices we use a fast implementation with the same arithmetic as the
+simulator and an analytical count; the test suite requires bit-identical
+results and equal instruction counts between both on synthetic matrices,
+including masked, overflowing, and multi-strip rows.
+
+\emph{Ablation.} A variant of \code{vtdot.vv} that rounds every product and
+partial sum to $2\mathrm{SEW}$, like \code{vfwmacc}, separates the effect of the
+format from that of the exact accumulation.
+
+\section{Results and Discussion}
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=1 by 3, vertical sep=7mm},
+  width=\columnwidth, height=3.3cm, xmin=0, xmax=100, grid=major,
+  grid style={gray!25}, tick label style={font=\scriptsize},
+  label style={font=\scriptsize}, title style={font=\scriptsize, yshift=-1.5ex},
+  legend style={font=\scriptsize, at={(0.02,0.95)}, anchor=north west},
+  unbounded coords=jump, no markers, every axis plot/.append style={thick}]
+\nextgroupplot[title={8 bits}, ymin=-4, ymax=2, y filter/.expression={y<-4 ? -4 : y}]
+\addplot table[x=share, y=T8, col sep=comma] {\BenchCDF}; \addlegendentry{T8}
+\addplot table[x=share, y=E4M3, col sep=comma] {\BenchCDF}; \addlegendentry{E4M3}
+\addplot table[x=share, y=E5M2, col sep=comma] {\BenchCDF}; \addlegendentry{E5M2}
+\nextgroupplot[title={16 bits}, ymin=-8, ymax=2, y filter/.expression={y<-8 ? -8 : y}, ylabel={$\log_{10}$ relative error}]
+\addplot table[x=share, y=T16, col sep=comma] {\BenchCDF}; \addlegendentry{T16}
+\addplot table[x=share, y=FP16, col sep=comma] {\BenchCDF}; \addlegendentry{binary16}
+\nextgroupplot[title={32 bits}, ymin=-14, ymax=2, y filter/.expression={y<-14 ? -14 : y}, xlabel={matrices (\%)}]
+\addplot table[x=share, y=T32, col sep=comma] {\BenchCDF}; \addlegendentry{T32}
+\addplot table[x=share, y=FP32, col sep=comma] {\BenchCDF}; \addlegendentry{binary32}
+\end{groupplot}
+\end{tikzpicture}
+\caption{\BenchDraft Cumulative distribution of the SpMV relative error against
+binary128, by format. A curve ends where the remaining matrices produced NaN or
+an infinity; smaller errors, including exact results, are drawn at the
+bottom of the axis.}
+\label{fig:cdf}
+\end{figure}
+
+\begin{table}[t]
+\caption{\BenchDraft SpMV results per format (\BenchMatrices{} matrices).
+Median $\log_{10}$ of the relative error, share of matrices with error below
+100\%, share with NaN or infinity, and vector instructions per nonzero}
+\label{tab:results}
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrr}
+\toprule
+Format & Median & $<100\%$ & NaN/$\infty$ & Vec./nnz\\
+\midrule
+T8 & $\BenchMedianTEight$ & \BenchBelowOneTEight\% & \BenchInfTEight\% & \BenchVecPerNnzTEight\\
+E4M3 & $\BenchMedianEFourMThree$ & \BenchBelowOneEFourMThree\% & \BenchInfEFourMThree\% & \BenchVecPerNnzEFourMThree\\
+E5M2 & $\BenchMedianEFiveMTwo$ & \BenchBelowOneEFiveMTwo\% & \BenchInfEFiveMTwo\% & \BenchVecPerNnzEFiveMTwo\\
+\midrule
+T16 & $\BenchMedianTSixteen$ & \BenchBelowOneTSixteen\% & \BenchInfTSixteen\% & \BenchVecPerNnzTSixteen\\
+binary16 & $\BenchMedianFPSixteen$ & \BenchBelowOneFPSixteen\% & \BenchInfFPSixteen\% & \BenchVecPerNnzFPSixteen\\
+\midrule
+T32 & $\BenchMedianTThirtyTwo$ & \BenchBelowOneTThirtyTwo\% & \BenchInfTThirtyTwo\% & \BenchVecPerNnzTThirtyTwo\\
+binary32 & $\BenchMedianFPThirtyTwo$ & \BenchBelowOneFPThirtyTwo\% & \BenchInfFPThirtyTwo\% & \BenchVecPerNnzFPThirtyTwo\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\emph{Accuracy.} Fig.~\ref{fig:cdf} and Table~\ref{tab:results} summarize the
+\BenchMatrices{} matrices. At 8 and 16 bits the decisive difference is dynamic
+range. Every takum result was finite, and no matrix entry had to be saturated.
+E4M3, whose largest value is 448, gave NaN for \BenchInfEFourMThree\% of the
+matrices, E5M2 for \BenchInfEFiveMTwo\%, and binary16 for \BenchInfFPSixteen\%;
+these formats also flushed nonzero entries to zero in \BenchFlushEFourMThree,
+\BenchFlushEFiveMTwo, and \BenchFlushFPSixteen{} matrices. Where they stay in
+range, however, the IEEE formats are usually more accurate. Compared matrix by
+matrix, T8 has a smaller error than E4M3 in \BenchBetterTEightEFourMThree{} of
+the \BenchInRangeTEightEFourMThree{} matrices where E4M3 is finite and a larger
+one in \BenchWorseTEightEFourMThree; T16 beats binary16 in
+\BenchBetterTSixteenFPSixteen{} of \BenchInRangeTSixteenFPSixteen{} and loses in
+\BenchWorseTSixteenFPSixteen. This is the trade-off of tapered precision: takums
+spend bits on range, and near unity they keep fewer fraction bits than an IEEE
+format of the same width~\cite{takum}. T8 also has errors of 100\% or more in
+\BenchAboveOneTEight\% of the matrices, caused by cancellation in rows whose
+exact sum is small. At 32 bits both formats cover all the data and T32 is more
+accurate: a smaller error in \BenchBetterTThirtyTwoFPThirtyTwo{} matrices, a
+larger one in \BenchWorseTThirtyTwoFPThirtyTwo, and a median of
+$\BenchMedianTThirtyTwo$ against $\BenchMedianFPThirtyTwo$, in line
+with~\cite{simd}.
+
+\emph{Exact accumulation.} Rounding every step to $2\mathrm{SEW}$ instead of
+using \code{vtdot.vv} changed the result in only
+\the\numexpr\BenchBetterTEightTEightStep+\BenchWorseTEightTEightStep\relax{} T8,
+\the\numexpr\BenchBetterTSixteenTSixteenStep+\BenchWorseTSixteenTSixteenStep\relax{} T16,
+and \the\numexpr\BenchBetterTThirtyTwoTThirtyTwoStep+\BenchWorseTThirtyTwoTThirtyTwoStep\relax{}
+T32 matrices, and in T8 the exact sum was better in
+\BenchBetterTEightTEightStep{} of them and worse in
+\BenchWorseTEightTEightStep. With $x$ of ones every product is exact and most
+rows are short, so fusion has little effect on SpMV accuracy here; its benefit
+in this kernel is the instruction count.
+
+\emph{Instruction count.} \code{vtdot.vv} replaces the multiply, the change of
+\code{vtype}, and the reduction of the IEEE kernel, and the FP8 kernel also needs
+two widening conversions per strip. Over all matrices the takum kernel executes
+\BenchVecReductionEFourMThree\% fewer vector instructions than the FP8 kernels,
+\BenchVecReductionFPSixteen\% fewer than binary16 and
+\BenchVecReductionFPThirtyTwo\% fewer than binary32. Counting the scalar loop
+control, which is identical for all formats, the total reductions are
+\BenchTotalReductionEFourMThree\%, \BenchTotalReductionFPSixteen\%, and
+\BenchTotalReductionFPThirtyTwo\%. Fewer instructions do not imply fewer cycles:
+a fused dot product is a longer operation in hardware, which this functional
+model does not measure.
+
+\emph{Control state.} No kernel instruction reads \code{frm} or sets a flag in
+the takum version. The IEEE kernels depend on the dynamic rounding mode, and
+their overflow appears only as a NaN or an infinity in the data or as a sticky
+flag that the code must test. Takum saturation keeps results finite but
+silent; it did not occur in these matrices, and an architecture that needs to
+detect it would have to keep one flag, which is still less state than
+\code{fcsr}.
+
+\emph{Limitations.} The model is functional and written in Python with exact
+rationals, so it says nothing about speed or hardware cost. The FP8 baseline
+uses conversions that ratified RVV lacks. Only $x$ of ones was evaluated, and
+SpMV exercises one access pattern.
+
+\section{Conclusion}
+Takums fit into RVV as a format selected by SEW, with five instructions under a
+custom opcode and no new control or status state. On \BenchMatrices{} real
+matrices, 8- and 16-bit takums always gave finite results where OFP8 and
+binary16 failed for a quarter to a third of the matrices, at the cost of lower
+accuracy than those formats where they stay in range; at 32 bits takum was the
+more accurate format. The fused widening dot product shortens the SpMV inner
+loop compared with every IEEE kernel. Natural next steps are a cycle-level or RTL model of \code{vtdot.vv},
+the logarithmic takum variant, and kernels beyond SpMV.
+
+\section*{Reproducibility}
+The repository contains the model, tests, scripts, and results.
+\code{make verify} repeats the phase~1 checks and the test suite, \code{make
+fetch} and \code{make bench} download the matrices and rerun the benchmark
+(about three minutes on 16 cores), and
+\code{make paper} builds this paper from the result files. Source:
+\url{https://github.com/pedrohcali/aoc-takum-rvv}.
+
+\begin{thebibliography}{10}
+\bibitem{ieee754}
+``IEEE Standard for Floating-Point Arithmetic,'' \emph{IEEE Std 754-2019},
+Jul. 2019, doi: 10.1109/IEEESTD.2019.8766229.
+\bibitem{ofp8}
+P. Micikevicius, S. Oberman, P. Dubey \emph{et al.}, ``OCP 8-bit Floating Point
+Specification (OFP8),'' Open Compute Project, Jun. 2023.
+\bibitem{simd}
+L. Hunhold, ``Streamlining SIMD ISA Extensions with Takum Arithmetic:
+A Case Study on Intel AVX10.2,'' in \emph{Proc. 14th Int. Conf. Modern Circuits
+and Systems Technologies (MOCAST)}, Jun. 2025, pp. 1 to 6.
+\bibitem{takum}
+L. Hunhold, ``Beating Posits at Their Own Game: Takum Arithmetic,'' in
+\emph{Next Generation Arithmetic}, LNCS, vol. 14666. Springer, 2024,
+pp. 1 to 51, doi: 10.1007/978-3-031-72709-2\_1.
+\bibitem{rvv}
+``RISC-V `V' Vector Extension,'' version 1.0, RISC-V International, Sep. 2021.
+\bibitem{rvunpriv}
+``The RISC-V Instruction Set Manual, Volume I: Unprivileged Architecture,''
+RISC-V International, 2024.
+\bibitem{posit}
+J. L. Gustafson and I. Yonemoto, ``Beating Floating Point at Its Own Game:
+Posit Arithmetic,'' \emph{Supercomputing Frontiers and Innovations}, vol. 4,
+no. 2, pp. 71 to 86, 2017.
+\bibitem{sparsesolvers}
+L. Hunhold and J. Quinlan, ``Evaluation of Bfloat16, Posit, and Takum
+Arithmetics in Sparse Linear Solvers,'' in \emph{Proc. IEEE ARITH}, 2025,
+arXiv: 2412.20268.
+\bibitem{takumvhdl}
+L. Hunhold, ``Design and Implementation of a Takum Arithmetic Hardware Codec
+in VHDL,'' 2024, arXiv: 2408.10594.
+\bibitem{fphub}
+J. Hormigo \emph{et al.}, ``FPHUB-RISCV: HUB Floating-Point Unit in RISC-V
+Platform: Format definition,'' in \emph{RISC-V Summit Europe}, Paris, France,
+May 2025.
+\bibitem{libtakum}
+L. Hunhold, ``libtakum: Takum arithmetic C99 reference implementation,''
+version 2.0.0, revision \code{776ac0c}.
+[Online]. Available: \url{https://github.com/takum-arithmetic/libtakum}
+\bibitem{matrixmarket}
+R. F. Boisvert, R. Pozo, K. Remington, R. F. Barrett, and J. J. Dongarra,
+``Matrix Market: A Web Resource for Test Matrix Collections,'' in
+\emph{Quality of Numerical Software}. Springer, 1997, pp. 125 to 137.
+[Online]. Available: \url{https://math.nist.gov/MatrixMarket/}
+\bibitem{suitesparse}
+T. A. Davis and Y. Hu, ``The University of Florida Sparse Matrix Collection,''
+\emph{ACM Trans. Math. Softw.}, vol. 38, no. 1, pp. 1 to 25, 2011.
+\end{thebibliography}
+\end{document}

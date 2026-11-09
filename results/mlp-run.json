@@ -1,0 +1,29 @@
+{
+  "generated_at_utc": "2026-11-09T21:57:22.107834+00:00",
+  "python": "3.12.3",
+  "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "trials": 64,
+  "seed_base": 5000,
+  "layers": [
+    64,
+    64,
+    64,
+    16
+  ],
+  "scales_log2": [
+    -16,
+    -12,
+    -8,
+    -4,
+    0,
+    4,
+    8,
+    12,
+    16
+  ],
+  "vlen": 128,
+  "lmul": 1,
+  "reference": "binary128",
+  "jobs": 16,
+  "duration_seconds": 229.4
+}

@@ -104,13 +104,30 @@ class CodecTests(unittest.TestCase):
                 self.assertEqual(TakumFormat(8).convert(bits, target), bits << (target - 8))
                 self.assertEqual(TakumFormat(target).convert(bits << (target - 8), 8), bits)
 
+    def test_t64_extension_and_roundtrip(self):
+        # T64 is the vtdot.vv accumulator for T32. Takums are invariant under
+        # zero extension, so every shorter pattern shifted left keeps its value.
+        rng = random.Random(64)
+        t64 = TakumFormat(64)
+        for width in (8, 16, 32):
+            fmt = TakumFormat(width)
+            patterns = range(1 << width) if width == 8 else [rng.getrandbits(width) for _ in range(2000)]
+            for bits in patterns:
+                self.assertEqual(t64.decode(bits << (64 - width)), fmt.decode(bits))
+                self.assertEqual(fmt.convert(bits, 64), bits << (64 - width))
+        for bits in [rng.getrandbits(64) for _ in range(5000)] + [1, t64.nar - 1, t64.nar + 1, t64.mask]:
+            self.assertEqual(t64.encode(t64.decode(bits)), bits)
+        self.assertEqual(t64.encode(1), 1 << 62)
+        self.assertEqual(t64.fields(1 << 62).fraction_width, 59)
+        self.assertLess(t64.min_positive, TakumFormat(32).min_positive)
+
     def test_decimal_input_is_exact(self):
         fmt = TakumFormat(32)
         self.assertEqual(fmt.encode("0.1"), fmt.encode(Fraction(1, 10)))
         self.assertEqual(fmt.encode(Decimal("0.1")), fmt.encode(Fraction(1, 10)))
 
     def test_invalid_input(self):
-        for width in (0, 7, 64, 8.0, True):
+        for width in (0, 7, 128, 8.0, True):
             with self.assertRaises(ValueError):
                 TakumFormat(width)
         for bits in (-1, 256, 1.5, True):

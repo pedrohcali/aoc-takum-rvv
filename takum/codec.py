@@ -9,11 +9,13 @@ this is not necessarily rounding to the nearest real value.
 from dataclasses import dataclass
 from decimal import Decimal
 from fractions import Fraction
-from functools import cached_property
+from functools import cached_property, lru_cache
 import math
 
 
 Number = int | float | str | Decimal | Fraction | None
+# T64 is the accumulator width of vtdot.vv for T32 sources (phase 2).
+WIDTHS = (8, 16, 32, 64)
 
 
 def power_of_two(exponent: int) -> Fraction:
@@ -91,8 +93,8 @@ class TakumFormat:
     width: int
 
     def __post_init__(self) -> None:
-        if type(self.width) is not int or self.width not in (8, 16, 32):
-            raise ValueError("Takum width must be 8, 16 or 32")
+        if type(self.width) is not int or self.width not in WIDTHS:
+            raise ValueError("Takum width must be 8, 16, 32 or 64")
 
     @property
     def mask(self) -> int:
@@ -129,6 +131,14 @@ class TakumFormat:
                       (1 - 2 * sign) * (c + sign), special)
 
     def decode(self, bits: int) -> Fraction | None:
+        # Validate before the cache: True and 1.0 hash like 1.
+        self.validate_bits(bits)
+        return self._decode_cached(bits)
+
+    # Decoding is pure; the cache speeds up the phase 3 benchmark, where the
+    # same patterns recur. Fractions are immutable, so sharing them is safe.
+    @lru_cache(maxsize=1 << 18)
+    def _decode_cached(self, bits: int) -> Fraction | None:
         return self.fields(bits).value
 
     @cached_property

@@ -1,6 +1,6 @@
 PYTHON ?= python3
 
-.PHONY: test reference demo vector artifacts verify fetch bench bench-synthetic mlp summary paper slides package
+.PHONY: test reference demo vector artifacts verify fetch bench bench-synthetic mlp isa summary paper slides package
 
 test:
 	$(PYTHON) scripts/run_tests.py
@@ -34,6 +34,10 @@ bench-synthetic:
 # Machine learning case: dense layers with ReLU, input scale sweep.
 mlp:
 	$(PYTHON) scripts/run_mlp.py
+
+# Static analysis: value classes of every bit pattern per format.
+isa:
+	$(PYTHON) scripts/isa_analysis.py
 
 paper:
 	mkdir -p output/pdf

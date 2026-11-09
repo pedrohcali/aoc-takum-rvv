@@ -66,8 +66,24 @@ Todas as instruções operam sobre os elementos `0 ≤ i < vl` ativos.
   como faz `vfwmacc` no IEEE; ele existe só para medir o efeito da fusão.
 - **`vncvt.t.t`:** `vd[i] (SEW) = round(vs2[i] (2·SEW))`, com a mesma política de
   arredondamento e saturação de `TakumFormat.convert`. A conversão de alargamento
-  não precisa de instrução própria nos kernels, porque ela é exata e equivale a
-  acrescentar zeros à direita.
+  não precisa de instrução própria, porque é exata e equivale a acrescentar
+  zeros à direita: `vwsll.vx vd, vs2, t0` (Zvbb) com `t0 = SEW` faz T8→T16,
+  T16→T32 e T32→T64.
+
+**O que não precisa de instrução nova.** Takum é ordenado como inteiro em
+complemento de dois, e a negação é a negação inteira. Por isso as instruções
+de inteiro do RVV já cobrem:
+
+| Operação | IEEE (precisa de versão de ponto flutuante) | Takum (instrução de inteiro existente) |
+|---|---|---|
+| Comparação | `vmfeq`, `vmfne`, `vmflt`, `vmfle`, `vmfgt`, `vmfge` | `vmseq`, `vmsne`, `vmslt`, `vmsle`, `vmsgt` |
+| Mínimo, máximo, ReLU | `vfmin`, `vfmax` | `vmin`, `vmax` (ReLU = `vmax.vx vd, vs, zero`) |
+| Negação, valor absoluto | `vfsgnjn`, `vfsgnjx` | `vrsub.vx vd, vs, zero`; `vmax` de x e −x |
+| Classificação | `vfclass` | `vmseq` com 0 e com NaR (só dois valores especiais) |
+
+NaR é o menor padrão, então `vmax.vx` com zero leva NaR a 0, assim como
+`vfmax` leva NaN a 0 no IEEE (`maximumNumber`). Nos dois casos, uma ReLU pode
+esconder um valor inválido.
 
 **Valores especiais.** Qualquer operando NaR produz NaR, inclusive em `vtdot`.
 Não existem infinitos, zero negativo nem subnormais. Valores finitos fora da
@@ -125,6 +141,13 @@ em faixas de VLMAX sobre y: vsetvli ; vle(2·SEW) ; vncvt.t.t | vfncvt.f.f.w ; v
 ```
 
 Instruções vetoriais por faixa do laço interno: **Takum 5, FP16/FP32 7, FP8 9.**
+
+**Camada densa `y = ReLU(W x)`** (`spmv_simulated(..., dense=True, relu=True)`):
+o mesmo laço, mas x é lido com `vle(SEW).v v5, (a2)` contíguo, sem `vle32` e
+sem `vluxei32` (Takum 4, FP16/FP32 6, FP8 8 por faixa). Na passada final, depois
+do estreitamento, vem a ReLU: `vmax.vx v4, v4, zero` no Takum e
+`vfmax.vf v4, v4, f0` no IEEE. O controle escalar por linha é `mv, mv, addi, bne`
+e por faixa `sub, slli, add, add, bnez`.
 `spmv.count_instructions` aplica esse modelo a qualquer matriz; os testes exigem
 que ele coincida com a contagem do simulador e que o caminho rápido produza o
 mesmo resultado, bit a bit, que a execução instrução por instrução.

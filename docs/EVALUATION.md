@@ -73,6 +73,40 @@ que a saturação é silenciosa: os contadores `saturated` de `spmv-errors.csv`
 mostram quantas entradas foram limitadas, informação que o hardware só daria com
 um indicador próprio.
 
+**Análise estática da ISA.** Além das 5 instruções, o que cada abordagem
+precisa (tabela III do artigo; detalhes em `docs/ZVTAKUM.md` §4):
+
+| Necessidade | RVV IEEE, com BF16 e os rascunhos de OFP8 | Zvtakum |
+|---|---|---|
+| Escolha do formato | SEW e `vtype.altfmt` (rascunho Zvfbfa) | SEW |
+| Ampliação | `vfwcvt.f.f.v`, `vfwcvtbf16.f.f.v` | `vwsll.vx` (Zvbb, inteiro) |
+| Redução | `vfncvt.f.f.w`, `vfncvt.rod.f.f.w`, `vfncvtbf16[.sat].f.f.w`, `vfncvt[.sat].f.f.q` | `vncvt.t.t` |
+| Comparação, mín./máx., ReLU | `vmf*`, `vfmin`, `vfmax` | `vms*`, `vmin`, `vmax` de inteiros |
+| Sinal, classificação | `vfsgnj*`, `vfclass` | `vrsub`, `vmseq` |
+| Estado de controle | `frm`, `fflags` | nenhum |
+
+BF16 tem conversões e multiplica-acumula ratificados (Zvfbfmin, Zvfbfwma).
+Zvfbfa (bit `altfmt` em `vtype`) e Zvfofp8min (só conversões OFP8, com versões
+saturante e não saturante) são rascunhos ainda não ratificados.
+
+**Decodificador.** `scripts/isa_analysis.py` (`make isa`) percorre todos os
+padrões de bits de cada formato e conta as classes que o decodificador trata
+à parte (`results/isa-encodings.csv`):
+
+| Formato | Campo de expoente | Subnormais | ±∞ | NaN | Padrões especiais |
+|---|---:|---:|---:|---:|---:|
+| E4M3 | 4 | 14 | 0 | 2 | 7,0% |
+| E5M2 | 5 | 6 | 2 | 6 | 6,2% |
+| binary16 | 5 | 2.046 | 2 | 2.046 | 6,2% |
+| bfloat16 | 8 | 254 | 2 | 254 | 0,8% |
+| binary32 | 8 | 16.777.214 | 2 | 16.777.214 | 0,8% |
+| T*n* (qualquer *n*) | 4 a 11 | 0 | 0 | 1 (NaR) | 2/2^*n* |
+
+Cada formato IEEE tem seu próprio corte de campos e quatro classes especiais
+(zero, subnormal, infinito, NaN). Takum tem uma regra para todas as larguras:
+o expoente vem de no máximo os 12 primeiros bits, o resto é fração, e só 0 e
+NaR são especiais.
+
 ## 5. Resultados
 
 Números completos em `results/spmv-summary.json`; artigo e slides os leem de

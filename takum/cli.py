@@ -24,7 +24,12 @@ def main(argv=None):
             p.add_argument("b", help="Numeric value (decimal, fraction or NaR)")
             p.add_argument("--raw", action="store_true", help="Treat operands as raw bit patterns")
     sub.add_parser("demo")
+    sub.add_parser("vector-demo", help="Zvtakum instructions and SpMV kernel trace")
     args = parser.parse_args(argv)
+    if args.command == "vector-demo":
+        from .vector_demo import main as vector_demo
+        vector_demo()
+        return
     try:
         if args.command == "demo":
             output = []

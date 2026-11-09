@@ -1,4 +1,4 @@
-# Roteiro da demonstração da fase 1
+# Roteiro da demonstração
 
 Tempo sugerido: 5 a 7 minutos. Executar na raiz do repositório.
 
@@ -50,8 +50,23 @@ com patch de portabilidade. Explicar que o patch é do validador externo, e que
 os 196.608 casos T8 também passam por um oráculo exato independente.
 A execução original que falhou permanece registrada em `results/`.
 
-Finalizar: a fase 1 implementa a semântica escalar. Ainda serão adicionados os
-registradores/instruções vetoriais e os experimentos de álgebra linear.
+## 5. Instruções vetoriais Zvtakum (3 minutos)
+
+```sh
+python3 -m takum vector-demo
+```
+
+Mostrar, em T16 com VLEN=128:
+
+- `vtadd`, `vtsub` e `vtmul` elemento a elemento, com a palavra de 32 bits de
+  cada instrução (opcode custom-2);
+- `vtdot.vv` acumulando em T32: o resultado coincide com a soma exata, porque
+  há um único arredondamento;
+- `vncvt.t.t` reduzindo T32 para T16.
+
+Depois, a SpMV 4×4: o rastro da primeira linha mostra o laço com `vluxei32` e
+`vtdot.vv`; o resumo compara T16 e binary16 com a mesma contagem de instruções
+escalares e menos instruções vetoriais no Takum.
 
 ## Perguntas para ensaiar
 

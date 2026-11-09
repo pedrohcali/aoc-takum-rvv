@@ -1,0 +1,14 @@
+{
+  "generated_at_utc": "2026-11-09T18:20:52.143598+00:00",
+  "python": "3.12.3",
+  "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "matrices_requested": 64,
+  "matrix_list_sha256": "synthetic",
+  "vlen": 128,
+  "lmul": 1,
+  "x": "ones",
+  "reference": "binary128",
+  "ablation": true,
+  "jobs": 16,
+  "duration_seconds_this_session": 12.1
+}

@@ -1,0 +1,209 @@
+{
+  "matrices": 64,
+  "nnz_total": 122151,
+  "max_nnz": 6712,
+  "formats": {
+    "T8": {
+      "matrices_with_error": 64,
+      "spmv_median_log10": -0.5804423150949347,
+      "spmv_p90_log10": -0.22818869961582067,
+      "spmv_share_below_100pct": 100.0,
+      "spmv_share_infinite": 0.0,
+      "conversion_median_log10": -0.7663404873610986,
+      "conversion_share_infinite": 0.0,
+      "matrices_with_saturation": 0,
+      "matrices_with_overflow": 0,
+      "matrices_with_flush_to_zero": 0,
+      "vector_instructions": 119166,
+      "scalar_instructions": 170072,
+      "vector_instructions_per_nnz": 0.9755630326399293
+    },
+    "E4M3": {
+      "matrices_with_error": 64,
+      "spmv_median_log10": Infinity,
+      "spmv_p90_log10": Infinity,
+      "spmv_share_below_100pct": 39.0625,
+      "spmv_share_infinite": 60.9375,
+      "conversion_median_log10": -1.579570075397971,
+      "conversion_share_infinite": 46.875,
+      "matrices_with_saturation": 0,
+      "matrices_with_overflow": 30,
+      "matrices_with_flush_to_zero": 57,
+      "vector_instructions": 174006,
+      "scalar_instructions": 170072,
+      "vector_instructions_per_nnz": 1.424515558611882,
+      "takum_vector_reduction_pct": 31.516154615358094,
+      "takum_total_reduction_pct": 15.938246560372937
+    },
+    "E5M2": {
+      "matrices_with_error": 64,
+      "spmv_median_log10": -1.1010580138651278,
+      "spmv_p90_log10": Infinity,
+      "spmv_share_below_100pct": 54.6875,
+      "spmv_share_infinite": 45.3125,
+      "conversion_median_log10": -1.2966063430969132,
+      "conversion_share_infinite": 43.75,
+      "matrices_with_saturation": 0,
+      "matrices_with_overflow": 28,
+      "matrices_with_flush_to_zero": 35,
+      "vector_instructions": 174006,
+      "scalar_instructions": 170072,
+      "vector_instructions_per_nnz": 1.424515558611882,
+      "takum_vector_reduction_pct": 31.516154615358094,
+      "takum_total_reduction_pct": 15.938246560372937
+    },
+    "T16": {
+      "matrices_with_error": 64,
+      "spmv_median_log10": -2.9032717811252837,
+      "spmv_p90_log10": -2.394756345520733,
+      "spmv_share_below_100pct": 100.0,
+      "spmv_share_infinite": 0.0,
+      "conversion_median_log10": -3.1634747669305856,
+      "conversion_share_infinite": 0.0,
+      "matrices_with_saturation": 0,
+      "matrices_with_overflow": 0,
+      "matrices_with_flush_to_zero": 0,
+      "vector_instructions": 156501,
+      "scalar_instructions": 215768,
+      "vector_instructions_per_nnz": 1.281209322887246
+    },
+    "FP16": {
+      "matrices_with_error": 64,
+      "spmv_median_log10": -3.5072607552726964,
+      "spmv_p90_log10": Infinity,
+      "spmv_share_below_100pct": 56.25,
+      "spmv_share_infinite": 43.75,
+      "conversion_median_log10": -3.7201688607246073,
+      "conversion_share_infinite": 29.6875,
+      "matrices_with_saturation": 0,
+      "matrices_with_overflow": 19,
+      "matrices_with_flush_to_zero": 21,
+      "vector_instructions": 197663,
+      "scalar_instructions": 215768,
+      "vector_instructions_per_nnz": 1.6181856882055816,
+      "takum_vector_reduction_pct": 20.824332323196547,
+      "takum_total_reduction_pct": 9.956195834371396
+    },
+    "T32": {
+      "matrices_with_error": 64,
+      "spmv_median_log10": -7.769654866309633,
+      "spmv_p90_log10": -7.1761445437634634,
+      "spmv_share_below_100pct": 100.0,
+      "spmv_share_infinite": 0.0,
+      "conversion_median_log10": -7.978136396436181,
+      "conversion_share_infinite": 0.0,
+      "matrices_with_saturation": 0,
+      "matrices_with_overflow": 0,
+      "matrices_with_flush_to_zero": 0,
+      "vector_instructions": 234444,
+      "scalar_instructions": 311084,
+      "vector_instructions_per_nnz": 1.919296608296289
+    },
+    "FP32": {
+      "matrices_with_error": 64,
+      "spmv_median_log10": -7.484605042273479,
+      "spmv_p90_log10": -7.414150833256585,
+      "spmv_share_below_100pct": 100.0,
+      "spmv_share_infinite": 0.0,
+      "conversion_median_log10": -7.647290861111536,
+      "conversion_share_infinite": 0.0,
+      "matrices_with_saturation": 0,
+      "matrices_with_overflow": 0,
+      "matrices_with_flush_to_zero": 0,
+      "vector_instructions": 304404,
+      "scalar_instructions": 311084,
+      "vector_instructions_per_nnz": 2.492030355871012,
+      "takum_vector_reduction_pct": 22.98261520873576,
+      "takum_total_reduction_pct": 11.366590412810652
+    },
+    "T8-stepwise": {
+      "matrices_with_error": 64,
+      "spmv_median_log10": -0.5804423150949347,
+      "spmv_p90_log10": -0.22818869972040545,
+      "spmv_share_below_100pct": 100.0,
+      "spmv_share_infinite": 0.0,
+      "conversion_median_log10": -0.7663404873610986,
+      "conversion_share_infinite": 0.0,
+      "matrices_with_saturation": 0,
+      "matrices_with_overflow": 0,
+      "matrices_with_flush_to_zero": 0,
+      "vector_instructions": 119166,
+      "scalar_instructions": 170072,
+      "vector_instructions_per_nnz": 0.9755630326399293
+    },
+    "T16-stepwise": {
+      "matrices_with_error": 64,
+      "spmv_median_log10": -2.9032717811252837,
+      "spmv_p90_log10": -2.394756345520733,
+      "spmv_share_below_100pct": 100.0,
+      "spmv_share_infinite": 0.0,
+      "conversion_median_log10": -3.1634747669305856,
+      "conversion_share_infinite": 0.0,
+      "matrices_with_saturation": 0,
+      "matrices_with_overflow": 0,
+      "matrices_with_flush_to_zero": 0,
+      "vector_instructions": 156501,
+      "scalar_instructions": 215768,
+      "vector_instructions_per_nnz": 1.281209322887246
+    },
+    "T32-stepwise": {
+      "matrices_with_error": 64,
+      "spmv_median_log10": -7.769654866309633,
+      "spmv_p90_log10": -7.1761445437634634,
+      "spmv_share_below_100pct": 100.0,
+      "spmv_share_infinite": 0.0,
+      "conversion_median_log10": -7.978136396436181,
+      "conversion_share_infinite": 0.0,
+      "matrices_with_saturation": 0,
+      "matrices_with_overflow": 0,
+      "matrices_with_flush_to_zero": 0,
+      "vector_instructions": 234444,
+      "scalar_instructions": 311084,
+      "vector_instructions_per_nnz": 1.919296608296289
+    }
+  },
+  "pairs": {
+    "T8|E4M3": {
+      "matrices": 25,
+      "first_better": 0,
+      "first_worse": 25,
+      "equal": 0
+    },
+    "T8|E5M2": {
+      "matrices": 35,
+      "first_better": 9,
+      "first_worse": 26,
+      "equal": 0
+    },
+    "T16|FP16": {
+      "matrices": 36,
+      "first_better": 6,
+      "first_worse": 30,
+      "equal": 0
+    },
+    "T32|FP32": {
+      "matrices": 64,
+      "first_better": 45,
+      "first_worse": 19,
+      "equal": 0
+    },
+    "T8|T8-stepwise": {
+      "matrices": 64,
+      "first_better": 19,
+      "first_worse": 17,
+      "equal": 28
+    },
+    "T16|T16-stepwise": {
+      "matrices": 64,
+      "first_better": 0,
+      "first_worse": 0,
+      "equal": 64
+    },
+    "T32|T32-stepwise": {
+      "matrices": 64,
+      "first_better": 0,
+      "first_worse": 0,
+      "equal": 64
+    }
+  }
+}

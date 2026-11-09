@@ -19,12 +19,15 @@
   \input{../results/synthetic-macros.tex}\def\BenchCDF{../results/synthetic-cdf.csv}%
   \def\BenchDraft{\textcolor{red}{[rascunho: matrizes sintéticas]} }}
 
+\input{../results/mlp-macros.tex}
+\input{../results/isa-macros.tex}
+
 \title{Aritmética Takum na extensão vetorial RISC-V}
-\subtitle{Instruções Zvtakum e avaliação em SpMV}
+\subtitle{Instruções Zvtakum e avaliação em SpMV e camadas densas}
 \author{Arthur dos Santos Fernandes \and Bruno Lima Soares \and Lucas Rodrigues Prosperi Ayala
   \and Pedro Henrique Campos Lima \and Pedro Lopes Ozelin}
 \institute{Arquitetura e Organização de Computadores, DELT/UFMG, 2026/2}
-\date{11/11/2026}
+\date{17/11/2026}
 
 \begin{document}
 
@@ -135,6 +138,48 @@ E4M3 vs E5M2 no mesmo SEW & um formato por largura\\
 \end{tabular}
 \end{frame}
 
+\begin{frame}{Complexidade da ISA e do decodificador}
+\begin{columns}[T]
+\begin{column}{0.55\textwidth}
+\footnotesize
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.22\linewidth}>{\raggedright\arraybackslash}p{0.47\linewidth}>{\raggedright\arraybackslash}p{0.27\linewidth}@{}}
+\toprule
+Necessidade & RVV IEEE (+ BF16, OFP8) & Zvtakum\\
+\midrule
+Formato & SEW + \code{vtype.altfmt} & SEW\\
+Ampliar & \code{vfwcvt}, \code{vfwcvtbf16} & \code{vwsll.vx}\\
+Reduzir & \code{vfncvt[.rod]}, \code{vfncvtbf16[.sat]}, \code{vfncvt[.sat].f.f.q} & \code{vncvt.t.t}\\
+Comparar, máx., ReLU & \code{vmf*}, \code{vfmin}, \code{vfmax} & \code{vms*}, \code{vmax} (inteiro)\\
+Sinal, classe & \code{vfsgnj*}, \code{vfclass} & \code{vrsub}, \code{vmseq}\\
+Estado & \code{frm}, \code{fflags} & nenhum\\
+\bottomrule
+\end{tabular}
+\end{column}
+\begin{column}{0.42\textwidth}
+\footnotesize
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+Formato & Subnormais & NaN & Especiais\\
+\midrule
+E4M3 & \IsaSubEFourMThree & \IsaNaNEFourMThree & \IsaSpecialEFourMThree\%\\
+E5M2 & \IsaSubEFiveMTwo & \IsaNaNEFiveMTwo & \IsaSpecialEFiveMTwo\%\\
+binary16 & \IsaSubFPSixteen & \IsaNaNFPSixteen & \IsaSpecialFPSixteen\%\\
+bfloat16 & \IsaSubBFSixteen & \IsaNaNBFSixteen & \IsaSpecialBFSixteen\%\\
+\midrule
+T$n$ & 0 & 1 (NaR) & $2/2^n$\\
+\bottomrule
+\end{tabular}
+\vspace{0.8em}
+
+Contagem exaustiva de todos os padrões (\code{make isa}). Takum: uma regra
+para toda largura, expoente nos 12 primeiros bits.
+\end{column}
+\end{columns}
+\vspace{0.8em}
+\small Takum é ordenado como inteiro em complemento de dois: comparação, ReLU,
+negação e ampliação usam instruções de inteiro que o RVV já tem.
+\end{frame}
+
 \begin{frame}[fragile]{Kernel SpMV CSR (laço interno, por faixa)}
 \footnotesize
 \begin{columns}[T]
@@ -235,6 +280,44 @@ Instruções vetoriais a menos com Takum: \BenchVecReductionEFourMThree\% contra
 \BenchVecReductionFPSixteen\% contra binary16, \BenchVecReductionFPThirtyTwo\% contra binary32.
 \end{frame}
 
+\begin{frame}{Aprendizado de máquina: camada densa $y=\mathrm{ReLU}(Wx)$}
+\begin{columns}[T]
+\begin{column}{0.58\textwidth}
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=1 by 3, vertical sep=2mm, xticklabels at=edge bottom},
+  width=0.8\linewidth, height=2.6cm, xmin=-16, xmax=16, xtick={-16,-8,...,16},
+  grid=major, grid style={gray!25}, tick label style={font=\tiny}, label style={font=\scriptsize},
+  legend style={font=\tiny, at={(1.02,0.5)}, anchor=west, cells={anchor=west}},
+  every axis plot/.append style={thick, mark size=1pt}]
+\nextgroupplot[ymin=-1.5, ymax=0.3]
+\addplot table[x=scale, y=T8, col sep=comma] {../results/mlp-curve.csv}; \addlegendentry{T8}
+\addplot table[x=scale, y=E4M3, col sep=comma] {../results/mlp-curve.csv}; \addlegendentry{E4M3}
+\addplot table[x=scale, y=E5M2, col sep=comma] {../results/mlp-curve.csv}; \addlegendentry{E5M2}
+\nextgroupplot[ymin=-3.6, ymax=0.3, ylabel={mediana $\log_{10}$ erro}]
+\addplot table[x=scale, y=T16, col sep=comma] {../results/mlp-curve.csv}; \addlegendentry{T16}
+\addplot table[x=scale, y=FP16, col sep=comma] {../results/mlp-curve.csv}; \addlegendentry{binary16}
+\nextgroupplot[ymin=-8.5, ymax=-6.8, xlabel={escala da entrada $2^k$}]
+\addplot table[x=scale, y=T32, col sep=comma] {../results/mlp-curve.csv}; \addlegendentry{T32}
+\addplot table[x=scale, y=FP32, col sep=comma] {../results/mlp-curve.csv}; \addlegendentry{binary32}
+\end{groupplot}
+\end{tikzpicture}
+\end{column}
+\begin{column}{0.4\textwidth}
+\small
+\begin{itemize}
+\item \MlpTrials{} redes aleatórias $64\to64\to64\to16$, sem bias; entrada $\times 2^k$.
+\item ReLU Takum: \code{vmax.vx} de inteiro.
+\item IEEE: erro constante na faixa, perde a saída fora dela (E4M3 em
+  \the\numexpr 9-\MlpUsableEFourMThree\relax{} de 9 escalas).
+\item T16 e T32 nunca perdem; T8 degrada aos poucos.
+\item Em $k=0$: E4M3 $\MlpMedianEFourMThree$ contra T8 $\MlpMedianTEight$.
+\item Instruções vetoriais: $-\MlpVecReductionEFourMThree\%$ (FP8),
+  $-\MlpVecReductionFPSixteen\%$ (binary16).
+\end{itemize}
+\end{column}
+\end{columns}
+\end{frame}
+
 \begin{frame}{Discussão e limitações}
 \textbf{Precisão dentro da faixa:} onde o IEEE não estoura, ele costuma ganhar em
 8 e 16 bits (T8 perde para E4M3 em \BenchWorseTEightEFourMThree{} de
@@ -254,7 +337,7 @@ O ganho do \code{vtdot} aqui é em instruções.
 \item Modelo funcional: conta instruções, não ciclos, área nem energia.
 \item Menos instruções $\neq$ mais rápido: \code{vtdot} é uma operação longa em hardware.
 \item Linha de base FP8 usa conversões que o RVV ratificado não tem.
-\item Só $x$ = uns e só SpMV.
+\item SpMV só com $x$ = uns; redes aleatórias, não treinadas.
 \end{itemize}
 \end{frame}
 
@@ -264,6 +347,8 @@ python3 -m takum vector-demo   # 5 instruções, rastro, codificação
 python3 -m takum add --width 8 1.5 2.25
 make test                      # suíte completa de testes
 make bench                     # benchmark, retomável
+make mlp                       # camadas densas, varredura de escala
+make isa                       # contagem de padrões especiais
 make paper slides
 \end{verbatim}
 \end{frame}
@@ -275,9 +360,10 @@ make paper slides
 \item Em 8 e 16 bits, Takum sempre deu resultado finito; OFP8 e binary16 falharam em
   de \BenchInfFPSixteen\% a \BenchInfEFourMThree\% das matrizes, mas são mais precisos onde não estouram.
 \item Em 32 bits, T32 foi mais preciso que binary32 (\BenchBetterTThirtyTwoFPThirtyTwo{} contra \BenchWorseTThirtyTwoFPThirtyTwo{} matrizes).
-\item O \code{vtdot} encurta o laço da SpMV em relação a todos os kernels IEEE.
+\item Camadas densas: T16 e T32 mantêm a saída em toda a faixa $2^{\pm16}$; E4M3 precisa de fatores de escala.
+\item O \code{vtdot} encurta os laços da SpMV e da camada densa; comparação, ReLU e ampliação usam instruções de inteiro.
 \item Próximos passos: modelo de ciclos ou RTL do \code{vtdot}, Takum logarítmico,
-  outros kernels.
+  redes treinadas.
 \end{itemize}
 \vspace{1em}
 \centering \small \url{https://github.com/pedrohcali/aoc-takum-rvv}

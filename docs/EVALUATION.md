@@ -74,7 +74,7 @@ mostram quantas entradas foram limitadas, informação que o hardware só daria 
 um indicador próprio.
 
 **Análise estática da ISA.** Além das 5 instruções, o que cada abordagem
-precisa (tabela III do artigo; detalhes em `docs/ZVTAKUM.md` §4):
+precisa (tabela II do artigo; detalhes em `docs/ZVTAKUM.md` §4):
 
 | Necessidade | RVV IEEE, com BF16 e os rascunhos de OFP8 | Zvtakum |
 |---|---|---|
@@ -134,3 +134,45 @@ Números completos em `results/spmv-summary.json`; artigo e slides os leem de
   que binary16 e 22% menos que binary32 (16%, 9% e 11% no total).
 
 Discussão completa na seção VI de `output/pdf/final.pdf`.
+
+## 6. Aprendizado de máquina: camada densa
+
+**Kernel.** Camada sem bias `y = ReLU(W x)`: o mesmo kernel CSR sobre a matriz
+cheia, com x lido por `vle` contíguo e a ReLU depois do estreitamento
+(`vmax.vx` de inteiro no Takum, `vfmax.vf` no IEEE). Ver `docs/ZVTAKUM.md` §7.
+
+**Experimento** (`make mlp`, `takum/mlp.py`, `scripts/run_mlp.py`):
+
+- 64 redes aleatórias 64→64→64→16, ReLU nas duas primeiras camadas, pesos
+  N(0, 2/n) (He) e entrada N(0, 1), todos convertidos exatamente para frações;
+- entrada multiplicada por 2^k, k = −16, −12, …, 16. Sem bias, a saída exata
+  escala por 2^k, então a varredura isola a faixa dinâmica;
+- referência binary128; erro relativo da saída da rede. Erro ≥ 100% conta
+  como saída perdida.
+
+**Resultados** (`results/mlp-summary.json`, figura 3 do artigo):
+
+| Formato | Mediana log10 em k = 0 | Escalas sem perda (de 9) | Instr. vetoriais/MAC |
+|---|---:|---:|---:|
+| T8 | −0,9 | 7 | 0,317 |
+| E4M3 | −1,2 | 4 | 0,567 |
+| E5M2 | −0,9 | 7 | 0,567 |
+| T16 | −3,3 | 9 | 0,572 |
+| binary16 | −3,2 | 8 | 0,822 |
+| T32 | −8,1 | 9 | 1,082 |
+| binary32 | −7,2 | 9 | 1,582 |
+
+- **Faixa:** o IEEE tem erro constante enquanto as ativações cabem no formato e
+  perde a saída fora disso (subfluxo zera as ativações; estouro vira NaN ou ∞,
+  que a ReLU seguinte transforma em 0). E4M3 perdeu a saída em 5 das 9 escalas,
+  E5M2 e binary16 em 2^16. T16 e T32 nunca perderam; T8 perdeu em 19% e 47% das
+  redes em 2^−16 e 2^16 e degrada aos poucos.
+- **Precisão em k = 0:** repete a SpMV: E4M3 é mais preciso que T8, T16 e
+  binary16 empatam, T32 é mais preciso que binary32.
+- **Soma exata do `vtdot`:** não mudou nenhuma saída T16 ou T32; em T8 foi
+  melhor em 80 e pior em 83 de 576 execuções. O estreitamento final para SEW
+  domina o erro.
+- **Instruções:** o kernel Takum executa 44% menos instruções vetoriais que FP8,
+  30% menos que binary16 e 32% menos que binary32 (26%, 16% e 17% no total).
+- **Limite:** redes aleatórias, não treinadas; o resultado descreve o erro
+  aritmético, não a acurácia de um modelo.

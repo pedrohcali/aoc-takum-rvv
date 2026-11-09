@@ -11,7 +11,12 @@ extensão vetorial RISC-V (RVV), em três etapas:
    `vtsub.vv`, `vtmul.vv`, `vtdot.vv` e `vncvt.t.t` ([especificação](docs/ZVTAKUM.md)).
 3. **Avaliação**: SpMV com 358 matrizes reais do Matrix Market em Takum e em E4M3, E5M2,
    binary16 e binary32, com erro relativo à precisão quádrupla e contagem de
-   instruções ([método](docs/EVALUATION.md)).
+   instruções; camadas densas de rede neural (`ReLU(W x)`) com varredura de
+   escala da entrada; e análise estática das instruções e dos decodificadores
+   ([método](docs/EVALUATION.md)).
+
+As decisões de projeto, com alternativas e justificativas, estão em
+[docs/DECISIONS.md](docs/DECISIONS.md).
 
 ## Execução
 
@@ -30,7 +35,7 @@ Por padrão, os operandos são valores numéricos. Para informar os bits diretam
 use `--raw`. As entradas são convertidas para a largura escolhida antes da operação.
 Por exemplo, em T8, `1.5 + 2.25` resulta em `3.5`, pois `2.25` arredonda para `2`.
 
-As instruções vetoriais e o kernel SpMV podem ser vistos com:
+As instruções vetoriais, o kernel SpMV e a camada densa podem ser vistos com:
 
 ```sh
 python3 -m takum vector-demo
@@ -42,6 +47,8 @@ python3 -m takum vector-demo
 make fetch            # baixa as matrizes do NIST Matrix Market (até 50 mil não nulos)
 make bench            # roda o benchmark e gera os resumos em results/
 make bench-synthetic  # versão offline, com matrizes sintéticas
+make mlp              # camadas densas com ReLU, 64 redes em 9 escalas (~4 min)
+make isa              # contagem dos padrões especiais de cada formato
 ```
 
 O benchmark pode ser interrompido e retomado. Os resultados alimentam o artigo
@@ -63,12 +70,13 @@ patch em Linux. A implementação e os critérios de validação são descritos 
 ## Arquivos
 
 - `takum/`: formato, ALU, formatos IEEE de referência, modelo vetorial,
-  Zvtakum, SpMV e interface de terminal.
+  Zvtakum, SpMV, camada densa (MLP) e interface de terminal.
 - `tests/`: testes automáticos, incluindo todos os pares T8 e a equivalência
   entre o simulador e o benchmark.
 - `scripts/`: validação, benchmark, exportação dos resultados e geração do ZIP.
 - `results/`: resultados dos testes, do benchmark e tabela de valores T8.
-- `docs/`: especificação, Zvtakum, avaliação, validação e roteiro da demonstração.
+- `docs/`: especificação, Zvtakum, avaliação, validação, registro de decisões e
+  roteiro da demonstração.
 - `paper/`: artigos da primeira etapa e final (LaTeX, IEEEtran).
 - `slides/`: apresentação final (Beamer).
 - `output/pdf/`: artigos e slides compilados.

@@ -1,6 +1,6 @@
 PYTHON ?= python3
 
-.PHONY: test reference demo vector artifacts verify fetch bench bench-synthetic summary paper slides package
+.PHONY: test reference demo vector artifacts verify fetch bench bench-synthetic mlp summary paper slides package
 
 test:
 	$(PYTHON) scripts/run_tests.py
@@ -30,6 +30,10 @@ bench:
 bench-synthetic:
 	$(PYTHON) scripts/run_benchmark.py --synthetic 64
 	$(PYTHON) scripts/summarize_benchmark.py results/synthetic-errors.csv
+
+# Machine learning case: dense layers with ReLU, input scale sweep.
+mlp:
+	$(PYTHON) scripts/run_mlp.py
 
 paper:
 	mkdir -p output/pdf

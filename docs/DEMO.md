@@ -68,6 +68,12 @@ Depois, a SpMV 4×4: o rastro da primeira linha mostra o laço com `vluxei32` e
 `vtdot.vv`; o resumo compara T16 e binary16 com a mesma contagem de instruções
 escalares e menos instruções vetoriais no Takum.
 
+Por fim, a camada densa `y = ReLU(W x)` 4×4: no lugar do `vluxei32`, x é lido
+com `vle16` contíguo, e a ReLU é `vmax.vx v4, v4, zero`, a instrução de máximo
+de **inteiros** do RVV. Ela funciona porque Takum é ordenado como inteiro em
+complemento de dois. O kernel E4M3 da mesma camada executa 53 instruções
+vetoriais, contra 37 do Takum.
+
 ## Perguntas para ensaiar
 
 1. Como D/R determinam o tamanho de C?
@@ -78,3 +84,5 @@ escalares e menos instruções vetoriais no Takum.
 6. Por que os tempos do Python não medem velocidade da ALU em hardware?
 7. Como os testes evitam usar o próprio encoder como única referência?
 8. Qual problema apareceu na libtakum e como a comparação foi tornada reproduzível?
+9. Por que a ReLU do Takum não precisa de instrução nova? O que acontece com NaR?
+10. Por que a rede sem bias permite isolar o efeito da faixa dinâmica?

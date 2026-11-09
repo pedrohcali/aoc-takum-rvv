@@ -3,8 +3,9 @@
 This is an instruction-level functional model: it executes each instruction's
 architectural effect and counts it, but it models no pipeline, latency or
 memory hierarchy. Only the RVV 1.0 subset needed by the SpMV kernels is
-present: vsetvli, unit-stride and indexed-unordered loads/stores, vmv.s.x and
-the IEEE floating-point baseline (vfwcvt, vfmul, vfwmul, vfredosum, vfncvt).
+present: vsetvli, unit-stride and indexed-unordered loads/stores, vmv.s.x,
+the signed integer maximum vmax.vx (used as ReLU on takums) and the IEEE
+floating-point baseline (vfwcvt, vfmul, vfwmul, vfredosum, vfncvt, vfmax).
 
 Policies: LMUL >= 1, tail and inactive elements undisturbed, element widths
 from 8 to 64 bits. Scalar instructions are not executed; the kernels report
@@ -12,8 +13,10 @@ them through scalar() so that the instruction count stays complete.
 """
 
 from collections import Counter
+from fractions import Fraction
+import math
 
-from .ieee import E4M3, FP16, FP32, FP64, IEEEFormat
+from .ieee import E4M3, FP16, FP32, FP64, IEEEFormat, is_finite
 
 WIDTHS = (8, 16, 32, 64)
 
@@ -144,6 +147,18 @@ class VectorMachine:
             self.set(vd, 0, self.sew, value)
         self.emit("vmv.s.x", f"v{vd}, zero" if value == 0 else f"v{vd}, t1")
 
+    def vmax_vx(self, vd: int, vs2: int, value: int = 0, vm: bool = True) -> None:
+        """Signed integer maximum with a scalar. Takums are ordered like
+        two's complement integers, so vmax.vx with x0 is a takum ReLU."""
+        half = 1 << (self.sew - 1)
+        for i in range(self.vl):
+            if self.active(i, vm):
+                element = self.get(vs2, i, self.sew)
+                signed = element - (element & half) * 2
+                self.set(vd, i, self.sew, max(signed, value))
+        self.emit("vmax.vx", f"v{vd}, v{vs2}, zero{self._mask_suffix(vm)}" if value == 0
+                  else f"v{vd}, v{vs2}, t1{self._mask_suffix(vm)}")
+
     # IEEE 754 baseline (RVV F/V subset; FP8 selected by self.fp8)
 
     def fp_format(self, sew: int) -> IEEEFormat:
@@ -193,3 +208,18 @@ class VectorMachine:
                     total = fmt.add(total, fmt.decode(self.get(vs2, i, self.sew)))
             self.set(vd, 0, self.sew, fmt.encode(total))
         self.emit("vfredosum.vs", f"v{vd}, v{vs2}, v{vs1}{self._mask_suffix(vm)}")
+
+    def vfmax_vf(self, vd: int, vs2: int, scalar=0, vm: bool = True) -> None:
+        """IEEE 754-2019 maximumNumber, as RISC-V fmax: a NaN operand yields the
+        other operand. With f0 = 0 this is the IEEE ReLU."""
+        fmt = self.fp_format(self.sew)
+        scalar = Fraction(scalar)
+        for i in range(self.vl):
+            if self.active(i, vm):
+                x = fmt.decode(self.get(vs2, i, self.sew))
+                if not is_finite(x) and math.isnan(x):
+                    result = scalar
+                else:
+                    result = x if x > scalar else scalar
+                self.set(vd, i, self.sew, fmt.encode(result))
+        self.emit("vfmax.vf", f"v{vd}, v{vs2}, f0{self._mask_suffix(vm)}")

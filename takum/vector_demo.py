@@ -58,6 +58,24 @@ def spmv_demo() -> None:
               f" (formula total {counts['total']})")
 
 
+def dense_layer_demo() -> None:
+    W = CSR.dense([[Fraction(v) for v in row] for row in
+                   (("0.5", "-1", "2", "0.25"), ("-3", "0.5", "-1", "1"),
+                    ("1", "1", "1", "1"), ("0.1", "-0.2", "0.3", "-0.4"))])
+    x = [Fraction(v) for v in ("1.5", "-0.5", "2", "4")]
+    exact = [max(sum(a * b for a, b in zip(W.values[4 * i:4 * i + 4], x)), Fraction(0)) for i in range(4)]
+    print("\n== Dense layer y = ReLU(W x), 4x4 ==")
+    print("exact y ~", [f"{float(v):.6g}" for v in exact])
+    y, machine = spmv_simulated(W, Variant("T16", "takum", 16), x, trace=True, dense=True, relu=True)
+    print("\nkernel trace for row 0 and the final ReLU pass, T16:")
+    for line in machine.trace[:8] + ["..."] + machine.trace[-11:-6]:
+        print("   ", line)
+    for variant in (Variant("T8", "takum", 8), Variant("E4M3", "ieee", 8), Variant("T16", "takum", 16)):
+        y, machine = spmv_simulated(W, variant, x, dense=True, relu=True)
+        print(f"{variant.name:>5}: y ~ {[f'{float(v):.6g}' for v in y]}  vector={machine.vector_count()}")
+
+
 def main() -> None:
     instructions_demo()
     spmv_demo()
+    dense_layer_demo()

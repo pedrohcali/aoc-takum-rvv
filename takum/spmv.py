@@ -9,6 +9,11 @@ Two implementations share one semantics:
 Tests require bit-identical results from both on synthetic matrices, and
 instruction counts from count_instructions equal to the simulated counts.
 
+The same kernel, with dense=True and relu=True, computes a dense neural
+network layer y = ReLU(W x): x is then loaded with a unit-stride vle instead
+of a gather, and the narrowed result goes through vmax.vx (takum) or vfmax.vf
+(IEEE) with zero.
+
 Every variant accumulates in 2*SEW: T8->T16, T16->T32, T32->T64 through
 vtdot.vv; E4M3/E5M2 are widened to FP16, FP16->FP32 and FP32->FP64 through
 vfwmul.vv and an ordered reduction. The result is narrowed back to SEW.
@@ -71,6 +76,20 @@ class CSR:
             row_ptr[i + 1] += row_ptr[i]
         return cls(n_rows, n_cols, row_ptr, cols, values, name)
 
+    @classmethod
+    def dense(cls, rows, name=""):
+        """Dense row-major matrix (list of rows) in CSR form, zeros included."""
+        n_rows, n_cols = len(rows), len(rows[0]) if rows else 0
+        if any(len(row) != n_cols for row in rows):
+            raise ValueError("Rows of a dense matrix must have equal length")
+        return cls(n_rows, n_cols, [i * n_cols for i in range(n_rows + 1)],
+                   list(range(n_cols)) * n_rows, [Fraction(v) for row in rows for v in row], name)
+
+    def is_dense(self) -> bool:
+        return self.nnz == self.n_rows * self.n_cols and all(
+            self.cols[i * self.n_cols:(i + 1) * self.n_cols] == list(range(self.n_cols))
+            for i in range(self.n_rows))
+
     @property
     def nnz(self) -> int:
         return len(self.values)
@@ -108,31 +127,47 @@ def read_matrix_market(path, name="") -> CSR:
 # Instruction counting. Kept next to the kernel; tests check both agree.
 SCALAR_PER_ROW = 7    # lw, lw, sub, addi, beqz, addi, bne
 SCALAR_PER_STRIP = 6  # sub, slli, add, slli, add, bnez
+SCALAR_PER_CHUNK = 6  # sub, slli, add, slli, add, bnez
+DENSE_SCALAR_PER_ROW = 4    # mv, mv, addi, bne
+DENSE_SCALAR_PER_STRIP = 5  # sub, slli, add, add, bnez
 VECTOR_PER_ROW = 4    # vsetivli, vmv.s.x, vsetivli, vse
-VECTOR_PER_CHUNK = 4  # vsetvli, vle, narrowing conversion, vse
+VECTOR_PER_CHUNK = 4  # vsetvli, vle, narrowing conversion, vse (+ ReLU)
 
 
-def vector_per_strip(variant: Variant) -> int:
+def vector_per_strip(variant: Variant, dense: bool = False) -> int:
+    """Sparse: vsetvli, vle, vle32, vluxei32, then the product and sum.
+    Dense: vsetvli, vle (W), vle (x), then the product and sum."""
+    loads = 3 if dense else 4
     if variant.family == "takum":
-        return 5  # vsetvli, vle, vle32, vluxei32, vtdot.vv
+        return loads + 1  # vtdot.vv
     if variant.sew == 8:
-        return 9  # ... vfwcvt x2, vsetvli, vfmul, vfredosum
-    return 7      # ... vfwmul, vsetvli, vfredosum
+        return loads + 5  # vfwcvt x2, vsetvli, vfmul, vfredosum
+    return loads + 3      # vfwmul, vsetvli, vfredosum
 
 
-def count_instructions(row_lengths, variant: Variant, vlen: int = 128, lmul: int = 1) -> dict:
+def count_instructions(row_lengths, variant: Variant, vlen: int = 128, lmul: int = 1,
+                       dense: bool = False, relu: bool = False) -> dict:
     vlmax = vlen * lmul // variant.sew
     strips = sum(-(-n // vlmax) for n in row_lengths)
     rows = len(row_lengths)
     chunks = -(-rows // vlmax)
-    vector = VECTOR_PER_ROW * rows + vector_per_strip(variant) * strips + VECTOR_PER_CHUNK * chunks
-    scalar = SCALAR_PER_ROW * rows + SCALAR_PER_STRIP * (strips + chunks)
+    vector = (VECTOR_PER_ROW * rows + vector_per_strip(variant, dense) * strips
+              + (VECTOR_PER_CHUNK + relu) * chunks)
+    if dense:
+        scalar = DENSE_SCALAR_PER_ROW * rows + DENSE_SCALAR_PER_STRIP * strips + SCALAR_PER_CHUNK * chunks
+    else:
+        scalar = SCALAR_PER_ROW * rows + SCALAR_PER_STRIP * strips + SCALAR_PER_CHUNK * chunks
     return {"vector": vector, "scalar": scalar, "total": vector + scalar, "strips": strips}
 
 
 def spmv_simulated(csr: CSR, variant: Variant, x=None, vlen: int = 128, lmul: int = 1,
-                   trace: bool = False):
-    """Run the vector kernel. Returns (y values, machine)."""
+                   trace: bool = False, dense: bool = False, relu: bool = False):
+    """Run the vector kernel. Returns (y values, machine).
+
+    dense=True requires a full matrix (CSR.dense) and loads x contiguously;
+    relu=True applies max(y, 0) after narrowing."""
+    if dense and not csr.is_dense():
+        raise ValueError("dense=True needs a matrix built with CSR.dense")
     machine = TakumVectorMachine(vlen, trace, vtdot_fused=variant.fused)
     s, size = variant.sew, variant.sew // 8
     storage = variant.storage
@@ -151,16 +186,24 @@ def spmv_simulated(csr: CSR, variant: Variant, x=None, vlen: int = 128, lmul: in
     k = 0
     for i in range(csr.n_rows):
         n = csr.row_ptr[i + 1] - csr.row_ptr[i]
-        for op, args in (("lw", "t0, 0(a0)"), ("lw", "t1, 4(a0)"), ("sub", "a5, t1, t0"), ("addi", "a0, a0, 4")):
-            machine.scalar(op, args)
+        if dense:
+            machine.scalar("mv", "a5, a6")
+            machine.scalar("mv", "a2, a4")
+        else:
+            for op, args in (("lw", "t0, 0(a0)"), ("lw", "t1, 4(a0)"), ("sub", "a5, t1, t0"), ("addi", "a0, a0, 4")):
+                machine.scalar(op, args)
         machine.vsetvli(1, 2 * s, immediate=True)
         machine.vmv_s_x(2, 0)
-        machine.scalar("beqz", "a5, 2f")
+        if not dense:
+            machine.scalar("beqz", "a5, 2f")
         while n > 0:
             vl = machine.vsetvli(n, s, lmul)
             machine.vle(4, vals + k * size, s)
-            machine.vle(12, offsets + k * 4, 32, rs1="a2")
-            machine.vluxei(5, x_address, 12, 32)
+            if dense:
+                machine.vle(5, x_address + (k - csr.row_ptr[i]) * size, s, rs1="a2")
+            else:
+                machine.vle(12, offsets + k * 4, 32, rs1="a2")
+                machine.vluxei(5, x_address, 12, 32)
             if variant.family == "takum":
                 machine.vtdot_vv(2, 4, 5)
             elif s == 8:
@@ -173,8 +216,13 @@ def spmv_simulated(csr: CSR, variant: Variant, x=None, vlen: int = 128, lmul: in
                 machine.vfwmul_vv(6, 4, 5)
                 machine.vsetvli(None, 2 * s, 2 * lmul)
                 machine.vfredosum_vs(2, 6, 2)
-            for op, args in (("sub", "a5, a5, t0"), ("slli", "t1, t0, log2(sew/8)"), ("add", "a1, a1, t1"),
-                             ("slli", "t2, t0, 2"), ("add", "a2, a2, t2"), ("bnez", "a5, 1b")):
+            if dense:
+                strip_scalar = (("sub", "a5, a5, t0"), ("slli", "t1, t0, log2(sew/8)"), ("add", "a1, a1, t1"),
+                                ("add", "a2, a2, t1"), ("bnez", "a5, 1b"))
+            else:
+                strip_scalar = (("sub", "a5, a5, t0"), ("slli", "t1, t0, log2(sew/8)"), ("add", "a1, a1, t1"),
+                                ("slli", "t2, t0, 2"), ("add", "a2, a2, t2"), ("bnez", "a5, 1b"))
+            for op, args in strip_scalar:
                 machine.scalar(op, args)
             k += vl
             n -= vl
@@ -189,8 +237,12 @@ def spmv_simulated(csr: CSR, variant: Variant, x=None, vlen: int = 128, lmul: in
         machine.vle(6, y_wide + i * 2 * size, 2 * s, rs1="a3")
         if variant.family == "takum":
             machine.vncvt_t_t(4, 6)
+            if relu:
+                machine.vmax_vx(4, 4)
         else:
             machine.vfncvt_f_f_w(4, 6)
+            if relu:
+                machine.vfmax_vf(4, 4)
         machine.vse(4, y_address + i * size, s, rs1="a7")
         for op, args in (("sub", "a5, a5, t0"), ("slli", "t1, t0, log2(2*sew/8)"), ("add", "a3, a3, t1"),
                          ("slli", "t2, t0, log2(sew/8)"), ("add", "a7, a7, t2"), ("bnez", "a5, 3b")):
@@ -278,6 +330,23 @@ def spmv_fast(csr: CSR, variant: Variant, a_values, x_values, vlen: int = 128, l
             total = acc_fmt.add(total, product)
         y.append(storage.quantize(total))
     return y
+
+
+def relu(values, variant: Variant):
+    """max(y, 0) with the semantics of the kernel's ReLU instruction.
+
+    Takum (vmax.vx with zero on the bit patterns): NaR, the most negative
+    pattern, becomes 0. IEEE (vfmax.vf, maximumNumber): NaN and -inf become 0.
+    In both cases ReLU can hide an invalid value."""
+    out = []
+    for v in values:
+        if variant.family == "takum":
+            out.append(Fraction(0) if v is None or v < 0 else v)
+        elif not is_finite(v):
+            out.append(v if v == math.inf else Fraction(0))
+        else:
+            out.append(v if v > 0 else Fraction(0))
+    return out
 
 
 def reference_spmv(csr: CSR, x_values=None):

@@ -1,0 +1,286 @@
+\documentclass[aspectratio=169,10pt]{beamer}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta}
+\usepackage{pgfplots}
+\usepgfplotslibrary{groupplots}
+\pgfplotsset{compat=1.18}
+\usetheme{default}
+\usecolortheme{beaver}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\NaR}{\mathrm{NaR}}
+\IfFileExists{../results/spmv-macros.tex}{%
+  \input{../results/spmv-macros.tex}\def\BenchCDF{../results/spmv-cdf.csv}\def\BenchDraft{}}{%
+  \input{../results/synthetic-macros.tex}\def\BenchCDF{../results/synthetic-cdf.csv}%
+  \def\BenchDraft{\textcolor{red}{[rascunho: matrizes sintéticas]} }}
+
+\title{Aritmética Takum na extensão vetorial RISC-V}
+\subtitle{Instruções Zvtakum e avaliação em SpMV}
+\author{Arthur dos Santos Fernandes \and Bruno Lima Soares \and Lucas Rodrigues Prosperi Ayala
+  \and Pedro Henrique Campos Lima \and Pedro Lopes Ozelin}
+\institute{Arquitetura e Organização de Computadores, DELT/UFMG, 2026/2}
+\date{11/11/2026}
+
+\begin{document}
+
+\begin{frame}
+\titlepage
+\end{frame}
+
+\begin{frame}{Motivação}
+\begin{itemize}
+\item Unidades vetoriais acumulam formatos de baixa precisão: binary16, bfloat16,
+  OFP8 E4M3 e E5M2. Cada um traz subnormais, infinitos, NaNs, modos de arredondamento.
+\item Mais formatos significam mais instruções de conversão e mais estado de controle.
+\item \textbf{Takum} (Hunhold, 2024): precisão afunilada, faixa dinâmica quase
+  independente do tamanho, um único decodificador para todas as larguras.
+\item Hunhold (2025) mostrou ganhos no AVX10.2 e citou RISC-V como trabalho futuro.
+\end{itemize}
+\vspace{1em}
+\textbf{Pergunta do projeto:} como fica o RVV com Takum como tipo de elemento,
+em instruções, estado de controle e erro numérico?
+\end{frame}
+
+\begin{frame}{O formato Takum linear}
+\centering
+\begin{tikzpicture}[box/.style={draw, minimum height=8mm, align=center, font=\small}]
+\node[box, minimum width=8mm, fill=red!15] (s) {S};
+\node[box, minimum width=8mm, fill=orange!20, right=0mm of s] (d) {D};
+\node[box, minimum width=20mm, fill=yellow!25, right=0mm of d] (r) {R (3 bits)};
+\node[box, minimum width=28mm, fill=green!15, right=0mm of r] (c) {C ($r$ bits, $0\le r\le 7$)};
+\node[box, minimum width=34mm, fill=blue!10, right=0mm of c] (f) {F ($p=n-5-r$ bits)};
+\end{tikzpicture}
+\vspace{1em}
+\begin{itemize}
+\item $r=R$ se $D=1$, $r=7-R$ se $D=0$; $c$ vem de $C$; $e=(1-2S)(c+S)$.
+\item Valor: $x=[(1-3S)+f]\,2^e$. S, D, R e C cabem nos 12 bits mais significativos.
+\item Especiais: só $0$ e $\NaR$. Negação por complemento de dois.
+\item Fora da faixa: \textbf{saturação}; nunca vira $0$, $\pm\infty$ ou $\NaR$.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Fase 1: modelo escalar exato}
+\begin{columns}
+\column{0.5\textwidth}
+\begin{itemize}
+\item Python, só biblioteca padrão, frações exatas.
+\item Um arredondamento por operação (par mais próximo no fluxo de bits).
+\item T8, T16, T32 e agora T64 (acumulador).
+\end{itemize}
+\column{0.5\textwidth}
+\textbf{Validação}
+\begin{itemize}
+\item Oráculo independente: todos os $256^2$ pares T8.
+\item Ida e volta exaustiva T8/T16.
+\item 548.793 comparações com a libtakum: 0 divergências.
+\end{itemize}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Decisões de projeto e alternativas}
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.22\textwidth}>{\raggedright\arraybackslash}p{0.31\textwidth}>{\raggedright\arraybackslash}p{0.37\textwidth}}
+\toprule
+Decisão & Alternativas consideradas & Por quê\\
+\midrule
+Takum linear & logarítmico & Enunciado usa campo $F$; estudo do AVX10.2 usa linear\\
+Simulador funcional em Python & RTL (VHDL/Verilog), C++ & Prazo; exatidão verificável; o enunciado aceita\\
+Opcode custom-2 & funct6 livres do OP-V & Não colide com extensões padrão futuras\\
+SEW seleciona T8/T16/T32 & bit novo em \code{vtype} & Nenhum estado novo\\
+\code{vtdot}: soma exata, 1 arredondamento & arredondar a cada passo & Proposta de Hunhold; ablação mede o efeito\\
+Acumulador $2\cdot$SEW em todos & larguras diferentes por formato & Comparação justa com o IEEE\\
+\bottomrule
+\end{tabular}
+\end{frame}
+
+\begin{frame}{Zvtakum: as cinco instruções}
+\centering
+\begin{tabular}{lll}
+\toprule
+Instrução & funct6 & Semântica\\
+\midrule
+\code{vtadd.vv} & \code{000000} & $v_d[i]=\mathrm{rd}(v_{s2}[i]+v_{s1}[i])$\\
+\code{vtsub.vv} & \code{000010} & $v_d[i]=\mathrm{rd}(v_{s2}[i]-v_{s1}[i])$\\
+\code{vtmul.vv} & \code{100100} & $v_d[i]=\mathrm{rd}(v_{s2}[i]\cdot v_{s1}[i])$\\
+\code{vtdot.vv} & \code{111100} & $v_d[0]=\mathrm{rd}_{2\mathrm{SEW}}(v_d[0]+\sum v_{s2}[i]\,v_{s1}[i])$\\
+\code{vncvt.t.t} & \code{010010} & $v_d[i]=\mathrm{rd}(v_{s2}[i])$, $2\mathrm{SEW}\to\mathrm{SEW}$\\
+\bottomrule
+\end{tabular}
+\vspace{1em}
+\begin{itemize}
+\item Leiaute OP-V, opcode \textbf{custom-2}, funct3 OPFVV; funct6 igual ao do equivalente IEEE.
+\item Máscara em \code{v0}; cauda e elementos inativos inalterados.
+\item \code{vtdot}: T8$\to$T16, T16$\to$T32, T32$\to$T64.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Nenhum CSR novo}
+\centering
+\begin{tabular}{ll}
+\toprule
+IEEE (\code{fcsr}) & Zvtakum\\
+\midrule
+\code{frm}: 5 modos de arredondamento & um único arredondamento\\
+NV, DZ & $\NaR$ propagado no próprio dado\\
+OF, UF & saturação: resultado finito e ordenado\\
+NX & não sinalizado\\
+subnormais, $\pm0$, $\pm\infty$, NaNs & não existem\\
+E4M3 vs E5M2 no mesmo SEW & um formato por largura\\
+\bottomrule
+\end{tabular}
+\end{frame}
+
+\begin{frame}[fragile]{Kernel SpMV CSR (laço interno, por faixa)}
+\footnotesize
+\begin{columns}[T]
+\column{0.32\textwidth}
+\textbf{Takum: 5}
+\begin{verbatim}
+vsetvli  e(SEW)
+vle      valores
+vle32    colunas
+vluxei32 x[col]
+vtdot.vv
+\end{verbatim}
+\column{0.32\textwidth}
+\textbf{binary16/32: 7}
+\begin{verbatim}
+vsetvli  e(SEW)
+vle / vle32 / vluxei32
+vfwmul.vv
+vsetvli  e(2SEW)
+vfredosum.vs
+\end{verbatim}
+\column{0.32\textwidth}
+\textbf{FP8: 9}
+\begin{verbatim}
+vsetvli  e8
+vle / vle32 / vluxei32
+vfwcvt x2  (FP8->FP16)
+vsetvli  e16
+vfmul.vv
+vfredosum.vs
+\end{verbatim}
+\end{columns}
+\vspace{0.5em}
+\normalsize
+Mesmo controle escalar em todos (6 por faixa, 7 por linha). O RVV ratificado não
+tem FP8: as conversões FP8$\leftrightarrow$FP16 são modeladas.
+\end{frame}
+
+\begin{frame}{Metodologia da avaliação}
+\begin{itemize}
+\item \textbf{Matrizes:} \BenchMatrices{} matrizes reais do NIST Matrix Market com até
+  50 mil não nulos (a SuiteSparse recusou os downloads); valores decimais lidos exatamente.
+\item \textbf{Formatos:} T8, E4M3, E5M2 · T16, binary16 · T32, binary32.
+\item \textbf{Referência:} binary128 (entradas, produtos e somas); $x$ = uns.
+\item \textbf{Erro:} $\|y_f-y_{\mathrm{ref}}\|_2/\|y_{\mathrm{ref}}\|_2$, calculado
+  exatamente; NaN ou $\infty$ conta como erro infinito.
+\item \textbf{Instruções:} VLEN = 128, LMUL = 1.
+\item \textbf{Confiabilidade:} o caminho rápido do benchmark é idêntico, bit a bit, ao
+  simulador instrução por instrução (testado), e a fórmula de contagem é igual à do simulador.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Resultado: distribuição do erro \BenchDraft}
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=3 by 1, horizontal sep=12mm},
+  width=0.36\textwidth, height=5cm, xmin=0, xmax=100, grid=major, grid style={gray!25},
+  tick label style={font=\scriptsize}, label style={font=\scriptsize},
+  title style={font=\small}, legend style={font=\scriptsize, at={(0.02,0.96)}, anchor=north west},
+  unbounded coords=jump, no markers, every axis plot/.append style={thick},
+  xlabel={matrizes (\%)}]
+\nextgroupplot[title={8 bits}, ymin=-4, ymax=2, y filter/.expression={y<-4 ? -4 : y}, ylabel={$\log_{10}$ erro relativo}]
+\addplot table[x=share, y=T8, col sep=comma] {\BenchCDF}; \addlegendentry{T8}
+\addplot table[x=share, y=E4M3, col sep=comma] {\BenchCDF}; \addlegendentry{E4M3}
+\addplot table[x=share, y=E5M2, col sep=comma] {\BenchCDF}; \addlegendentry{E5M2}
+\nextgroupplot[title={16 bits}, ymin=-8, ymax=2, y filter/.expression={y<-8 ? -8 : y}]
+\addplot table[x=share, y=T16, col sep=comma] {\BenchCDF}; \addlegendentry{T16}
+\addplot table[x=share, y=FP16, col sep=comma] {\BenchCDF}; \addlegendentry{binary16}
+\nextgroupplot[title={32 bits}, ymin=-14, ymax=2, y filter/.expression={y<-14 ? -14 : y}]
+\addplot table[x=share, y=T32, col sep=comma] {\BenchCDF}; \addlegendentry{T32}
+\addplot table[x=share, y=FP32, col sep=comma] {\BenchCDF}; \addlegendentry{binary32}
+\end{groupplot}
+\end{tikzpicture}
+
+\small A curva termina onde as matrizes restantes deram NaN ou $\infty$.
+\end{frame}
+
+\begin{frame}{Resultado: resumo \BenchDraft}
+\centering
+\begin{tabular}{lrrrr}
+\toprule
+Formato & Mediana $\log_{10}$ & erro $<100\%$ & NaN/$\infty$ & instr. vetoriais/nnz\\
+\midrule
+T8 & $\BenchMedianTEight$ & \BenchBelowOneTEight\% & \BenchInfTEight\% & \BenchVecPerNnzTEight\\
+E4M3 & $\BenchMedianEFourMThree$ & \BenchBelowOneEFourMThree\% & \BenchInfEFourMThree\% & \BenchVecPerNnzEFourMThree\\
+E5M2 & $\BenchMedianEFiveMTwo$ & \BenchBelowOneEFiveMTwo\% & \BenchInfEFiveMTwo\% & \BenchVecPerNnzEFiveMTwo\\
+\midrule
+T16 & $\BenchMedianTSixteen$ & \BenchBelowOneTSixteen\% & \BenchInfTSixteen\% & \BenchVecPerNnzTSixteen\\
+binary16 & $\BenchMedianFPSixteen$ & \BenchBelowOneFPSixteen\% & \BenchInfFPSixteen\% & \BenchVecPerNnzFPSixteen\\
+\midrule
+T32 & $\BenchMedianTThirtyTwo$ & \BenchBelowOneTThirtyTwo\% & \BenchInfTThirtyTwo\% & \BenchVecPerNnzTThirtyTwo\\
+binary32 & $\BenchMedianFPThirtyTwo$ & \BenchBelowOneFPThirtyTwo\% & \BenchInfFPThirtyTwo\% & \BenchVecPerNnzFPThirtyTwo\\
+\bottomrule
+\end{tabular}
+\vspace{1em}
+
+Instruções vetoriais a menos com Takum: \BenchVecReductionEFourMThree\% contra FP8,
+\BenchVecReductionFPSixteen\% contra binary16, \BenchVecReductionFPThirtyTwo\% contra binary32.
+\end{frame}
+
+\begin{frame}{Discussão e limitações}
+\textbf{Precisão dentro da faixa:} onde o IEEE não estoura, ele costuma ganhar em
+8 e 16 bits (T8 perde para E4M3 em \BenchWorseTEightEFourMThree{} de
+\BenchInRangeTEightEFourMThree{} matrizes; T16 perde para binary16 em
+\BenchWorseTSixteenFPSixteen{} de \BenchInRangeTSixteenFPSixteen). É o preço da
+precisão afunilada: bits gastos em faixa dinâmica.
+\vspace{0.6em}
+
+\textbf{Soma exata no \code{vtdot}:} quase neutra para o erro com $x$ = uns. Mudou o
+resultado em \the\numexpr\BenchBetterTEightTEightStep+\BenchWorseTEightTEightStep\relax{}
+matrizes T8 (melhor em \BenchBetterTEightTEightStep, pior em \BenchWorseTEightTEightStep).
+O ganho do \code{vtdot} aqui é em instruções.
+\vspace{1em}
+
+\textbf{Limitações}
+\begin{itemize}
+\item Modelo funcional: conta instruções, não ciclos, área nem energia.
+\item Menos instruções $\neq$ mais rápido: \code{vtdot} é uma operação longa em hardware.
+\item Linha de base FP8 usa conversões que o RVV ratificado não tem.
+\item Só $x$ = uns e só SpMV.
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Demonstração}
+\begin{verbatim}
+python3 -m takum vector-demo   # 5 instruções, rastro, codificação
+python3 -m takum add --width 8 1.5 2.25
+make test                      # suíte completa de testes
+make bench                     # benchmark, retomável
+make paper slides
+\end{verbatim}
+\end{frame}
+
+\begin{frame}{Conclusão}
+\begin{itemize}
+\item Takum entra no RVV como formato selecionado por SEW: cinco instruções,
+  opcode custom, \textbf{nenhum estado de controle novo}.
+\item Em 8 e 16 bits, Takum sempre deu resultado finito; OFP8 e binary16 falharam em
+  de \BenchInfFPSixteen\% a \BenchInfEFourMThree\% das matrizes, mas são mais precisos onde não estouram.
+\item Em 32 bits, T32 foi mais preciso que binary32 (\BenchBetterTThirtyTwoFPThirtyTwo{} contra \BenchWorseTThirtyTwoFPThirtyTwo{} matrizes).
+\item O \code{vtdot} encurta o laço da SpMV em relação a todos os kernels IEEE.
+\item Próximos passos: modelo de ciclos ou RTL do \code{vtdot}, Takum logarítmico,
+  outros kernels.
+\end{itemize}
+\vspace{1em}
+\centering \small \url{https://github.com/pedrohcali/aoc-takum-rvv}
+\end{frame}
+
+\end{document}

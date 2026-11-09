@@ -7,6 +7,7 @@
 % Project additions to the IEEE template.
 \usepackage[T1]{fontenc}
 \usepackage{booktabs}
+\usepackage{array}
 \usepackage{url}
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta}
@@ -29,6 +30,8 @@
   \input{../results/spmv-macros.tex}\def\BenchCDF{../results/spmv-cdf.csv}\def\BenchDraft{}}{%
   \input{../results/synthetic-macros.tex}\def\BenchCDF{../results/synthetic-cdf.csv}%
   \def\BenchDraft{\textcolor{red}{[DRAFT: synthetic matrices]} }}
+\input{../results/mlp-macros.tex}
+\input{../results/isa-macros.tex}
 \hypersetup{pdftitle={Takum Arithmetic in the RISC-V Vector Extension},
   pdfauthor={A. S. Fernandes, B. L. Soares, L. R. P. Ayala, P. H. C. Lima, P. L. Ozelin}}
 \begin{document}
@@ -81,9 +84,16 @@ infinity for \BenchInfEFourMThree\%, \BenchInfEFiveMTwo\%, and
 \BenchInfFPSixteen\% of the matrices. Where the IEEE formats stay in range they
 are usually more accurate at 8 and 16 bits; at 32 bits takum is more accurate
 for \BenchBetterTThirtyTwoFPThirtyTwo{} matrices and less for
-\BenchWorseTThirtyTwoFPThirtyTwo. The fused dot product removes
-\BenchVecReductionFPSixteen\% to \BenchVecReductionEFourMThree\% of the vector
-instructions of the kernel.
+\BenchWorseTThirtyTwoFPThirtyTwo. Dense neural network layers evaluated over
+input scales from $2^{-16}$ to $2^{16}$ show the same trade-off: E4M3 lost the
+output at \the\numexpr 9-\MlpUsableEFourMThree\relax{} of nine scales and
+binary16 at the largest, while T16 and T32 kept it at every scale. The fused
+dot product removes \BenchVecReductionFPSixteen\% to
+\BenchVecReductionEFourMThree\% of the vector instructions of the SpMV kernel
+and \MlpVecReductionFPSixteen\% to \MlpVecReductionEFourMThree\% of the dense
+kernel, and an exhaustive count of encodings shows one takum decoding rule with
+two special patterns where each IEEE format has its own field layout,
+subnormals, and NaNs.
 \end{abstract}
 \begin{IEEEkeywords}
 Takum, tapered precision, RISC-V vector extension, SpMV, functional simulation
@@ -109,8 +119,10 @@ experimental comparison with IEEE formats on sparse matrix-vector
 multiplication (SpMV). Our contributions are (i) an encoding and semantics for
 the five instructions that adds no control state to the ISA, (ii) a functional
 vector model in which the takum and IEEE kernels run under one instruction
-accounting, and (iii) an evaluation of accuracy and instruction count over the
-real sparse matrices. We make no claims about cycles,
+accounting, (iii) an evaluation of accuracy and instruction count on SpMV over
+real sparse matrices and on dense neural network layers, and (iv) a static
+count of the instructions and decoder cases that each approach needs. We make
+no claims about cycles,
 area, or power.
 
 \section{Related Work}
@@ -131,7 +143,7 @@ strict IEEE 754 compliance to reduce hardware cost, keeping an IEEE-like layout
 with a single rounding mode. The ratified RVV has no FP8 arithmetic; we
 therefore model FP8 conversions explicitly (Section~\ref{sec:baseline}).
 
-\section{Takum Representation and Scalar Arithmetic}
+\section{Background: Takum Arithmetic}
 An $n$-bit takum holds a sign bit $S$, a direction bit $D$, three regime bits
 read as $R$, $r$ characteristic bits read as $C$, and $p=n-5-r$ fraction bits
 read as $F$. With
@@ -185,6 +197,40 @@ Instruction & funct6 & Semantics\\
 \end{tabular}
 \end{table}
 
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[font=\scriptsize, >={Stealth[length=1.6mm]},
+  field/.style={draw, minimum height=5mm, inner sep=0pt, anchor=west},
+  box/.style={draw, rounded corners=1pt, align=center, inner sep=2pt, minimum height=8mm}]
+\node[field, minimum width=15.6mm] (f6) at (0,0) {\texttt{111100}};
+\node[field, minimum width=2.6mm] (vm) at (f6.east) {};
+\node[field, minimum width=13mm] (vs2) at (vm.east) {vs2};
+\node[field, minimum width=13mm] (vs1) at (vs2.east) {vs1};
+\node[field, minimum width=7.8mm] (f3) at (vs1.east) {\texttt{001}};
+\node[field, minimum width=13mm] (vd) at (f3.east) {vd};
+\node[field, minimum width=18.2mm] (op) at (vd.east) {\texttt{1011011}};
+\node[above=0pt of f6, font=\tiny] {funct6 (31:26)};
+\node[above=0pt of vm, font=\tiny] {vm};
+\node[above=0pt of vs2, font=\tiny] {24:20};
+\node[above=0pt of vs1, font=\tiny] {19:15};
+\node[above=0pt of f3, font=\tiny] {OPFVV};
+\node[above=0pt of vd, font=\tiny] {11:7};
+\node[above=0pt of op, font=\tiny] {custom-2 (6:0)};
+\node[box, text width=17mm, below=5mm of f6.south east, anchor=north] (src)
+  {$v_{s2}[i]\cdot v_{s1}[i]$\\exact, SEW bits};
+\node[box, text width=17mm, right=4mm of src] (sum) {$v_d[0]+\sum_i$\\exact};
+\node[box, text width=17mm, right=4mm of sum] (rd) {$\mathrm{rd}_2$: one\\rounding to 2SEW};
+\node[box, right=4mm of rd] (out) {$v_d[0]$\\2SEW};
+\draw[->] (src) -- (sum); \draw[->] (sum) -- (rd); \draw[->] (rd) -- (out);
+\draw[->] (out.south) -- ++(0,-2.5mm) -| node[pos=0.25, below, font=\tiny]
+  {accumulator, read and written in place} (sum.south);
+\end{tikzpicture}
+\caption{Encoding of \code{vtdot.vv} (top) and its data flow (bottom). The
+stepwise ablation instead applies $\mathrm{rd}_2$ after every product and every
+partial sum, as \code{vfwmacc} does.}
+\label{fig:vtdot}
+\end{figure}
+
 Element-wise instructions apply the scalar ALU to the active elements; masked
 and tail elements are left undisturbed. \code{vtdot.vv} reads SEW-bit sources
 and a $2\mathrm{SEW}$-bit accumulator in $v_d[0]$ (T8 to T16, T16 to T32, T32
@@ -202,6 +248,69 @@ saturate, so results stay finite and ordered. There are no subnormals, signed
 zeros, infinities, or NaN payloads. Selecting E4M3 or E5M2 at SEW${}=8$ needs
 one more bit of format state in an IEEE design; with takums one format per width
 suffices.
+
+\subsection{Instruction set and decoder complexity}\label{sec:static}
+Table~\ref{tab:isa} lists what each approach needs beyond element-wise
+arithmetic. For IEEE formats, RVV has binary16 and binary32 arithmetic and
+ratified bfloat16 conversions and widening multiply-accumulate (Zvfbfmin,
+Zvfbfwma)~\cite{rvunpriv}. Two draft extensions, not yet ratified, go further:
+Zvfbfa adds a bit \code{altfmt} to \code{vtype} that selects bfloat16 at
+SEW${}=16$, and Zvfofp8min uses it to select E4M3 or E5M2 at SEW${}=8$ and adds
+only conversions, with saturating and non-saturating variants~\cite{rvdrafts}.
+Every pair of formats that a kernel mixes thus needs its own conversion, and
+each conversion depends on \code{frm}. A takum of any width becomes a wider one
+by appending zeros, which the integer instruction \code{vwsll.vx} of Zvbb
+already does, and narrowing is the single \code{vncvt.t.t}. Because takums are
+ordered like two's complement integers and negate like them, comparisons,
+minimum, maximum, ReLU, negation, and classification reuse integer
+instructions; IEEE formats need floating-point versions of each.
+
+\begin{table}[t]
+\caption{Instructions and state beyond element-wise arithmetic}
+\label{tab:isa}
+\centering
+\setlength{\tabcolsep}{3pt}\footnotesize
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.16\columnwidth}>{\raggedright\arraybackslash}p{0.49\columnwidth}>{\raggedright\arraybackslash}p{0.29\columnwidth}@{}}
+\toprule
+Need & RVV IEEE (with BF16 and OFP8 drafts) & Zvtakum\\
+\midrule
+Format choice & SEW, \code{vtype.altfmt} & SEW\\
+Widening & \code{vfwcvt.f.f.v}, \code{vfwcvtbf16.f.f.v} & \code{vwsll.vx} (Zvbb)\\
+Narrowing & \code{vfncvt.f.f.w}, \code{vfncvt.rod.f.f.w}, \code{vfncvtbf16[.sat].f.f.w}, \code{vfncvt[.sat].f.f.q} & \code{vncvt.t.t}\\
+Compare, min/max & \code{vmf\{eq,ne,lt,le,gt,ge\}}, \code{vfmin}, \code{vfmax} & integer \code{vms*}, \code{vmin}, \code{vmax}\\
+Sign, class & \code{vfsgnj[n,x]}, \code{vfclass} & \code{vrsub}, \code{vmseq}\\
+Control state & \code{frm}, \code{fflags} & none\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+On the decoder side, an IEEE decoder must know the field split of each format
+and handle zeros, subnormals, infinities, and NaNs, which take a different path
+from normal values. Table~\ref{tab:classes} counts these patterns by
+enumerating every encoding with our decoders. A takum decoder has one rule for
+all widths: the exponent follows from at most the 12 leading bits, the rest is
+fraction, and only two patterns, $0$ and $\NaR$, are special.
+
+\begin{table}[t]
+\caption{Special bit patterns per format, counted exhaustively (32-bit formats
+by formula, checked against the exhaustive counts of the smaller ones)}
+\label{tab:classes}
+\centering
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lrrrrr}
+\toprule
+Format & Exp.\ field & Subnormal & $\pm\infty$ & NaN & Special\\
+\midrule
+E4M3 & 4 & \IsaSubEFourMThree & \IsaInfEFourMThree & \IsaNaNEFourMThree & \IsaSpecialEFourMThree\%\\
+E5M2 & 5 & \IsaSubEFiveMTwo & \IsaInfEFiveMTwo & \IsaNaNEFiveMTwo & \IsaSpecialEFiveMTwo\%\\
+binary16 & 5 & \IsaSubFPSixteen & \IsaInfFPSixteen & \IsaNaNFPSixteen & \IsaSpecialFPSixteen\%\\
+bfloat16 & 8 & \IsaSubBFSixteen & \IsaInfBFSixteen & \IsaNaNBFSixteen & \IsaSpecialBFSixteen\%\\
+binary32 & 8 & \IsaSubFPThirtyTwo & \IsaInfFPThirtyTwo & \IsaNaNFPThirtyTwo & \IsaSpecialFPThirtyTwo\%\\
+\midrule
+T$n$, any $n$ & 4 to 11 & 0 & 0 & 1 ($\NaR$) & $2/2^n$\\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsection{Functional vector model}
 \code{VectorMachine} holds the register file as bytes, checks register-group
@@ -248,6 +357,20 @@ cover all matrices we use a fast implementation with the same arithmetic as the
 simulator and an analytical count; the test suite requires bit-identical
 results and equal instruction counts between both on synthetic matrices,
 including masked, overflowing, and multi-strip rows.
+
+\emph{Dense layers.} As a machine learning kernel we use bias-free fully
+connected layers $y=\mathrm{ReLU}(Wx)$. The CSR kernel runs on full matrices,
+loads $x$ with a unit-stride \code{vle} instead of the gather, and applies the
+ReLU after the narrowing pass: \code{vmax.vx} with \code{x0} for takums, which
+works because takums are ordered like integers, and \code{vfmax.vf} for IEEE
+formats. Each of \MlpTrials{} random networks has layers
+$64\to64\to64\to16$ (\MlpMacs{} products), ReLU after the first two,
+He-initialized Gaussian weights, and a standard Gaussian input. Without bias
+the network is positively homogeneous: scaling the input by $2^k$ scales the
+exact output by $2^k$. We sweep $k=-16,-12,\dots,16$, which isolates the effect
+of dynamic range, as in a network run without the per-tensor scale factors that
+FP8 training relies on~\cite{fp8dl}. The error is that of the network output
+against binary128, and an error of 100\% or more counts as a lost output.
 
 \emph{Ablation.} A variant of \code{vtdot.vv} that rounds every product and
 partial sum to $2\mathrm{SEW}$, like \code{vfwmacc}, separates the effect of the
@@ -351,6 +474,58 @@ control, which is identical for all formats, the total reductions are
 a fused dot product is a longer operation in hardware, which this functional
 model does not measure.
 
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=1 by 3, vertical sep=3mm,
+    xticklabels at=edge bottom},
+  width=0.78\columnwidth, height=2.9cm, xmin=-16, xmax=16, xtick={-16,-12,...,16},
+  grid=major, grid style={gray!25}, tick label style={font=\scriptsize},
+  label style={font=\scriptsize},
+  legend style={font=\scriptsize, at={(1.03,0.5)}, anchor=west, cells={anchor=west}},
+  every axis plot/.append style={thick, mark size=1.2pt}]
+\nextgroupplot[ymin=-1.5, ymax=0.3]
+\addplot table[x=scale, y=T8, col sep=comma] {../results/mlp-curve.csv}; \addlegendentry{T8}
+\addplot table[x=scale, y=E4M3, col sep=comma] {../results/mlp-curve.csv}; \addlegendentry{E4M3}
+\addplot table[x=scale, y=E5M2, col sep=comma] {../results/mlp-curve.csv}; \addlegendentry{E5M2}
+\nextgroupplot[ymin=-3.6, ymax=0.3, ylabel={median $\log_{10}$ relative error}]
+\addplot table[x=scale, y=T16, col sep=comma] {../results/mlp-curve.csv}; \addlegendentry{T16}
+\addplot table[x=scale, y=FP16, col sep=comma] {../results/mlp-curve.csv}; \addlegendentry{binary16}
+\nextgroupplot[ymin=-8.5, ymax=-6.8, xlabel={input scale exponent $k$}]
+\addplot table[x=scale, y=T32, col sep=comma] {../results/mlp-curve.csv}; \addlegendentry{T32}
+\addplot table[x=scale, y=FP32, col sep=comma] {../results/mlp-curve.csv}; \addlegendentry{binary32}
+\end{groupplot}
+\end{tikzpicture}
+\caption{Median relative error of the output of \MlpTrials{} random networks
+against the input scale $2^k$, for 8 (top), 16, and 32 bits (bottom). An error
+of $10^0$ means the output was lost.}
+\label{fig:mlp}
+\end{figure}
+
+\emph{Dense layers.} Fig.~\ref{fig:mlp} shows the median error of the network
+output at each input scale. An IEEE curve is flat while the format holds the
+activations, because scaling by a power of two only shifts exponents, and jumps
+to 100\% when it does not: underflow flushes activations to zero, and overflow
+becomes NaN or an infinity, which the next ReLU maps to zero. E4M3 lost the
+output in nearly every network at \the\numexpr 9-\MlpUsableEFourMThree\relax{}
+of the nine scales, E5M2 and binary16 at $2^{16}$. T16 and T32 never lost it.
+T8 lost it in \MlpLostLowTEight\% and \MlpLostHighTEight\% of the networks at
+$2^{-16}$ and $2^{16}$, where it keeps almost no fraction bits, and its error
+grows gradually towards both ends instead of failing at once. At unit scale
+the comparison repeats that of SpMV: E4M3 is more accurate than T8 (median
+$\MlpMedianEFourMThree$ against $\MlpMedianTEight$), T16 and binary16 are close
+($\MlpMedianTSixteen$ and $\MlpMedianFPSixteen$), and T32 is more accurate than
+binary32 ($\MlpMedianTThirtyTwo$ against $\MlpMedianFPThirtyTwo$). An 8-bit
+takum is thus no substitute for E4M3 with good scale factors; what it removes
+is the need for them to keep results finite. Rounding every step of
+\code{vtdot.vv} changed no T16 or T32 output, and in T8 the fused version was
+better in \MlpFusedBetterTEight{} and worse in \MlpFusedWorseTEight{} of
+\MlpFusedRunsTEight{} runs: the final narrowing to SEW dominates the error, so
+the $2\mathrm{SEW}$ accumulator suffices. The dense takum kernel executes
+\MlpVecReductionEFourMThree\%, \MlpVecReductionFPSixteen\%, and
+\MlpVecReductionFPThirtyTwo\% fewer vector instructions than the FP8, binary16,
+and binary32 kernels, more than in SpMV because the gather no longer dominates.
+
 \emph{Control state.} No kernel instruction reads \code{frm} or sets a flag in
 the takum version. The IEEE kernels depend on the dynamic rounding mode, and
 their overflow appears only as a NaN or an infinity in the data or as a sticky
@@ -361,8 +536,9 @@ detect it would have to keep one flag, which is still less state than
 
 \emph{Limitations.} The model is functional and written in Python with exact
 rationals, so it says nothing about speed or hardware cost. The FP8 baseline
-uses conversions that ratified RVV lacks. Only $x$ of ones was evaluated, and
-SpMV exercises one access pattern.
+uses conversions that ratified RVV lacks. SpMV used only $x$ of ones, and the
+networks are random rather than trained, so the results describe arithmetic
+error, not model accuracy.
 
 \section{Conclusion}
 Takums fit into RVV as a format selected by SEW, with five instructions under a
@@ -370,15 +546,21 @@ custom opcode and no new control or status state. On \BenchMatrices{} real
 matrices, 8- and 16-bit takums always gave finite results where OFP8 and
 binary16 failed for a quarter to a third of the matrices, at the cost of lower
 accuracy than those formats where they stay in range; at 32 bits takum was the
-more accurate format. The fused widening dot product shortens the SpMV inner
-loop compared with every IEEE kernel. Natural next steps are a cycle-level or RTL model of \code{vtdot.vv},
-the logarithmic takum variant, and kernels beyond SpMV.
+more accurate format. Dense neural network layers confirm this: across a
+$2^{32}$ range of input scales, 16- and 32-bit takums never lost the output,
+while E4M3 needs scale factors to stay in range. Since takums are ordered like
+integers, comparisons, ReLU, and widening reuse integer instructions, and one
+decoding rule serves every width. The fused widening dot product shortens the
+SpMV and dense inner loops compared with every IEEE kernel. Natural next steps
+are a cycle-level or RTL model of \code{vtdot.vv}, the logarithmic takum
+variant, and trained networks.
 
 \section*{Reproducibility}
 The repository contains the model, tests, scripts, and results.
 \code{make verify} repeats the phase~1 checks and the test suite, \code{make
 fetch} and \code{make bench} download the matrices and rerun the benchmark
-(about three minutes on 16 cores), and
+(about three minutes on 16 cores), \code{make mlp} reruns the dense layers
+(about four minutes), \code{make isa} recounts the encodings, and
 \code{make paper} builds this paper from the result files. Source:
 \url{https://github.com/pedrohcali/aoc-takum-rvv}.
 
@@ -402,6 +584,12 @@ pp. 1 to 51, doi: 10.1007/978-3-031-72709-2\_1.
 \bibitem{rvunpriv}
 ``The RISC-V Instruction Set Manual, Volume I: Unprivileged Architecture,''
 RISC-V International, 2024.
+\bibitem{rvdrafts}
+``Zvfbfa and Zvfofp8min extensions,'' draft specifications, RISC-V
+International, riscv-isa-manual repository, 2026, not ratified.
+\bibitem{fp8dl}
+P. Micikevicius \emph{et al.}, ``FP8 Formats for Deep Learning,'' 2022,
+arXiv: 2209.05433.
 \bibitem{posit}
 J. L. Gustafson and I. Yonemoto, ``Beating Floating Point at Its Own Game:
 Posit Arithmetic,'' \emph{Supercomputing Frontiers and Innovations}, vol. 4,

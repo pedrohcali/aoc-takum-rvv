@@ -21,7 +21,8 @@ compilada apenas para a validação opcional em `scripts/validate_reference.py`.
 
 ## Resultados locais registrados
 
-- 20 testes: sem falhas, erros ou testes ignorados.
+- A suíte atual inclui a ALU escalar, as instruções vetoriais, SpMV e as camadas
+  densas. O total e o resultado da última execução estão em `results/unit-tests.json`.
 - Ida e volta exaustiva de 65.792 padrões T8/T16.
 - 196.608 operações T8 contra o oráculo racional independente.
 - 548.793 comparações diferenciais: nenhuma divergência com a referência corrigida.
@@ -97,4 +98,5 @@ afirma que o upstream original passa nos testes em qualquer plataforma. O patch
 - Zero divergências nas amostras não prova equivalência para todos os operandos T32.
 - O oráculo T8 é independente do algoritmo de implementação, mas compartilha
   explicitamente a mesma definição e a decisão de desempate para par.
-- Não foram medidos erro em SpMV, vantagens sobre IEEE, ciclos, área ou potência.
+- Os erros de SpMV e a comparação com IEEE estão em [EVALUATION.md](EVALUATION.md).
+  O simulador conta instruções. Ciclos, área e potência exigem um modelo de hardware.

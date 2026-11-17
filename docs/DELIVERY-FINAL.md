@@ -1,5 +1,8 @@
 # Entrega final: 17/11/2026
 
+O enunciado situa a entrega no dia da segunda prova. A apresentação dura
+15 minutos e inclui a demonstração funcional.
+
 ## Correspondência com o enunciado
 
 | Requisito | Evidência |
@@ -24,13 +27,28 @@
 ## Comandos
 
 ```sh
-make test             # suíte completa
+make verify           # suíte e comparação com a referência C
 make vector           # demonstração das instruções vetoriais
-make fetch bench      # benchmark com as matrizes reais
+make fetch            # verifica as 358 matrizes publicadas
+make bench BENCH_DIR=output/repeticao  # nova medição de SpMV
 make mlp              # camadas densas (aprendizado de máquina)
 make isa              # análise estática dos decodificadores
-make paper slides     # PDFs
+make summary          # recompõe os resumos a partir dos CSVs
+make package          # compila os PDFs finais e gera output/entrega-final.zip
 ```
+
+## Conferência de 17 de novembro
+
+No Mac ARM, a suíte passou nos 52 testes e a referência C com o patch de
+portabilidade coincidiu nas 548.793 comparações. A demonstração executou as
+cinco instruções, a SpMV e a camada densa com ReLU.
+
+Repetimos os experimentos em diretórios vazios com os mesmos parâmetros da
+execução Linux. Conferimos as 3.580 linhas de SpMV (358 matrizes × 10 variantes)
+e as 5.760 linhas das redes (64 redes × 9 escalas × 10 variantes). As contagens
+de instruções e eventos de faixa coincidiram. A maior diferença absoluta entre
+os erros em escala log10 foi inferior a 8 × 10⁻¹⁵ na SpMV e a 3 × 10⁻⁹ nas
+redes. Os valores arredondados usados no artigo e nos slides coincidiram.
 
 O artigo da fase 1 (`paper/phase1.tex`, `output/pdf/phase1.pdf`) foi mantido
 sem alterações, como registro da primeira entrega.

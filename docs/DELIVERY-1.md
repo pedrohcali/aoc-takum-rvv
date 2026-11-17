@@ -13,7 +13,7 @@ e implementação da ALU T8/T16/T32 (semanas 3 e 4).
 | Conversão T8/T16/T32 | `encode`, `decode`, `convert` |
 | Soma/subtração/multiplicação | `TakumALU` |
 | Testes automáticos | `tests/`, `scripts/run_tests.py` e CI |
-| Versionamento e organização | Repositório Git; entrega em ZIP gerado por `make package` |
+| Versionamento e organização | Repositório Git e ZIP da primeira etapa (`entrega-1.zip`) |
 | Documentação contínua | Especificação, validação, decisões e artigo parcial |
 | Demonstração funcional | `python3 -m takum demo` e `docs/DEMO.md` |
 

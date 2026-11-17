@@ -94,12 +94,32 @@ def download(path: str, max_nnz: int):
             "sha256": hashlib.sha256(data).hexdigest()}
 
 
+def fetch_listed(row):
+    path = CACHE / row["file"]
+    if path.is_file() and hashlib.sha256(path.read_bytes()).hexdigest() == row["sha256"]:
+        return
+    url = FILE_URL.format(path=row["group"] + "/" + row["name"])
+    data = gzip.decompress(fetch(url))
+    if hashlib.sha256(data).hexdigest() != row["sha256"]:
+        raise ValueError(f"SHA-256 mismatch for {row['file']}")
+    path.write_bytes(data)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--max-nnz", type=int, default=50000)
     parser.add_argument("--jobs", type=int, default=4)
+    parser.add_argument("--listed", action="store_true",
+                        help="Fetch and verify the matrices pinned in results/matrix-list.csv")
     args = parser.parse_args()
     CACHE.mkdir(parents=True, exist_ok=True)
+    if args.listed:
+        with (ROOT / "results" / "matrix-list.csv").open() as file:
+            rows = list(csv.DictReader(file))
+        with ThreadPoolExecutor(args.jobs) as pool:
+            list(pool.map(fetch_listed, rows))
+        print(f"{len(rows)} matrices verified")
+        return 0
     index = CACHE / "matrices.html"
     if not index.exists():
         index.write_bytes(fetch(INDEX_URL))

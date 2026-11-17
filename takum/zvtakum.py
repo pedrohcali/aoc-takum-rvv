@@ -60,7 +60,14 @@ class TakumVectorMachine(VectorMachine):
         word = encode(mnemonic, vd, vs2, vs1 or 0, vm)
         self.emit(mnemonic, f"{operands:<22} # 0x{word:08x}")
 
+    def _check_sew(self) -> None:
+        if self.sew not in (8, 16, 32):
+            raise ValueError("Zvtakum requires SEW 8, 16 or 32")
+
     def _elementwise(self, operation: str, vd: int, vs2: int, vs1: int, vm: bool) -> None:
+        self._check_sew()
+        if not vm and vd == 0:
+            raise ValueError("Masked vector destination overlaps v0")
         alu = TakumALU(self.sew)
         for register in (vd, vs2, vs1):
             self._group(register, self.sew)
@@ -84,8 +91,13 @@ class TakumVectorMachine(VectorMachine):
 
         The sum is exact and rounded once to the 2*SEW takum; any NaR operand
         gives NaR. With vtdot_fused=False every product and partial sum is
-        rounded to 2*SEW instead, as vfwmacc does for IEEE formats.
+        rounded to 2*SEW separately.
         """
+        self._check_sew()
+        if not 0 <= vd < 32:
+            raise ValueError("Invalid scalar reduction destination")
+        self._group(vs2, self.sew)
+        self._group(vs1, self.sew)
         source, accumulator = TakumFormat(self.sew), TakumFormat(2 * self.sew)
         if self.vl > 0:
             total = accumulator.decode(self.get(vd, 0, 2 * self.sew))
@@ -106,8 +118,14 @@ class TakumVectorMachine(VectorMachine):
 
     def vncvt_t_t(self, vd: int, vs2: int, vm: bool = True) -> None:
         """Narrowing conversion: vd[i] (SEW) = round(vs2[i] (2*SEW))."""
+        self._check_sew()
+        self._group(vd, self.sew)
+        wide_group = self._group(vs2, 2 * self.sew)
+        if vs2 < vd < vs2 + wide_group:
+            raise ValueError("Narrowing destination overlaps the high part of the source")
+        if not vm and vd == 0:
+            raise ValueError("Masked vector destination overlaps v0")
         source = TakumFormat(2 * self.sew)
-        self._group(vs2, 2 * self.sew)
         for i in range(self.vl):
             if self.active(i, vm):
                 self.set(vd, i, self.sew, source.convert(self.get(vs2, i, 2 * self.sew), self.sew))

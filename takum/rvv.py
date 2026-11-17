@@ -78,7 +78,7 @@ class VectorMachine:
     def _group(self, reg: int, eew: int) -> int:
         """Check alignment of a register group of element width eew."""
         emul = max(1, eew * self.lmul // self.sew)
-        if emul > 8 or reg % emul or reg + emul > 32:
+        if reg < 0 or emul > 8 or reg % emul or reg + emul > 32:
             raise ValueError(f"Invalid register group v{reg} for EEW={eew}, EMUL={emul}")
         return emul
 
@@ -105,13 +105,18 @@ class VectorMachine:
         """avl=None keeps the current vl (vsetvli zero, zero, ...)."""
         if sew not in WIDTHS or lmul not in (1, 2, 4, 8):
             raise ValueError("Unsupported SEW or LMUL")
+        new_max = self.vlmax(sew, lmul)
+        if avl is None:
+            if immediate or new_max != self.vlmax():
+                raise ValueError("Keeping vl requires vsetvli and an unchanged VLMAX")
+            dest, source = "zero", "zero"
+        else:
+            if avl < 0 or (immediate and avl > 31):
+                raise ValueError("Invalid AVL for the selected instruction")
+            dest, source = "t0", str(avl) if immediate else "a5"
+            self.vl = min(avl, new_max)
         self.sew, self.lmul = sew, lmul
-        if avl is not None:
-            self.vl = min(avl, self.vlmax())
-        elif self.vl > self.vlmax():
-            raise ValueError("vl does not fit the new vtype")
-        source = "zero" if avl is None else str(avl) if immediate else "a5"
-        self.emit("vsetivli" if immediate else "vsetvli", f"t0, {source}, e{sew}, m{lmul}, tu, mu")
+        self.emit("vsetivli" if immediate else "vsetvli", f"{dest}, {source}, e{sew}, m{lmul}, tu, mu")
         return self.vl
 
     # Loads, stores and moves

@@ -1,6 +1,10 @@
 # Roteiro da demonstração
 
-Tempo sugerido: 5 a 7 minutos. Executar na raiz do repositório.
+Para os 15 minutos em sala, use 4 minutos para formato e instruções, 5 para
+os experimentos, 4 para a demonstração e 2 para conclusões e perguntas.
+Na demonstração, execute a soma em T8 da seção 2 e o comando da seção 5.
+Os demais exemplos servem para o ensaio ou para responder a perguntas.
+Execute os comandos na raiz do projeto.
 
 ## 1. Campos e representação (1 minuto)
 

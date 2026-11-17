@@ -104,6 +104,8 @@ def main():
             done = {row["matrix"] for row in csv.DictReader(file)}
     pending = [(name, source, not args.no_ablation) for name, source in jobs if name not in done]
     print(f"{len(done)} done, {len(pending)} pending", file=sys.stderr)
+    if not pending and errors_path.exists():
+        return
     start = time.perf_counter()
     new_file = not errors_path.exists()
     with errors_path.open("a", newline="") as file, skipped_path.open("a", newline="") as skipped, \

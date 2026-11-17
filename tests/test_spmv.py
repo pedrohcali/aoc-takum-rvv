@@ -7,7 +7,7 @@ import unittest
 
 from takum.ieee import BINARY128
 from takum.spmv import (ABLATION, CSR, VARIANTS, count_instructions, log10_relative_error,
-                        quantize_values, read_matrix_market, reference_spmv, spmv_fast,
+                        quantize_values, read_matrix_market, reference_spmv, relu, spmv_fast,
                         spmv_simulated)
 
 
@@ -43,6 +43,33 @@ class SpMVTests(unittest.TestCase):
                     counts = count_instructions(A.row_lengths(), variant, vlen)
                     self.assertEqual(counts["vector"], machine.vector_count(), variant.name)
                     self.assertEqual(counts["scalar"], machine.scalar_count(), variant.name)
+
+    def test_grouped_kernels(self):
+        rng = random.Random(17)
+        matrices = (random_matrix(rng, 9, 45, 0.9, 1),
+                    CSR.dense([[rng.randrange(-4, 5) for _ in range(45)] for _ in range(9)]))
+        x = [Fraction((i % 7) - 3, 4) for i in range(45)]
+        for dense, matrix in zip((False, True), matrices):
+            for variant in VARIANTS:
+                a, _ = quantize_values(matrix.values, variant)
+                xq, _ = quantize_values(x, variant)
+                for lmul in (2, 4, 8):
+                    with self.subTest(dense=dense, variant=variant.name, lmul=lmul):
+                        if lmul == 8 or (not dense and lmul == 4 and variant.sew == 8):
+                            with self.assertRaises(ValueError):
+                                spmv_simulated(matrix, variant, x, lmul=lmul, dense=dense)
+                            with self.assertRaises(ValueError):
+                                count_instructions(matrix.row_lengths(), variant, lmul=lmul, dense=dense)
+                            with self.assertRaises(ValueError):
+                                spmv_fast(matrix, variant, a, xq, lmul=lmul, dense=dense)
+                            continue
+                        fast = spmv_fast(matrix, variant, a, xq, lmul=lmul, dense=dense)
+                        y, m = spmv_simulated(matrix, variant, x, lmul=lmul, dense=dense, relu=dense)
+                        self.assertEqual(y, relu(fast, variant) if dense else fast)
+                        counts = count_instructions(matrix.row_lengths(), variant, lmul=lmul,
+                                                    dense=dense, relu=dense)
+                        self.assertEqual((m.vector_count(), m.scalar_count()),
+                                         (counts["vector"], counts["scalar"]))
 
     def test_vtdot_removes_instructions(self):
         lengths = [3, 17, 0, 40]

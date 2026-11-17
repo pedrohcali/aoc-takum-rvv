@@ -14,11 +14,8 @@
 \setbeamertemplate{footline}[frame number]
 \newcommand{\code}[1]{\texttt{#1}}
 \newcommand{\NaR}{\mathrm{NaR}}
-\IfFileExists{../results/spmv-macros.tex}{%
-  \input{../results/spmv-macros.tex}\def\BenchCDF{../results/spmv-cdf.csv}\def\BenchDraft{}}{%
-  \input{../results/synthetic-macros.tex}\def\BenchCDF{../results/synthetic-cdf.csv}%
-  \def\BenchDraft{\textcolor{red}{[rascunho: matrizes sintéticas]} }}
-
+\input{../results/spmv-macros.tex}
+\def\BenchCDF{../results/spmv-cdf.csv}
 \input{../results/mlp-macros.tex}
 \input{../results/isa-macros.tex}
 
@@ -142,13 +139,14 @@ E4M3 vs E5M2 no mesmo SEW & um formato por largura\\
 \begin{columns}[T]
 \begin{column}{0.55\textwidth}
 \footnotesize
+\setlength{\tabcolsep}{1pt}
 \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.22\linewidth}>{\raggedright\arraybackslash}p{0.47\linewidth}>{\raggedright\arraybackslash}p{0.27\linewidth}@{}}
 \toprule
-Necessidade & RVV IEEE (+ BF16, OFP8) & Zvtakum\\
+Operação & RVV IEEE (+ BF16, OFP8) & Zvtakum\\
 \midrule
 Formato & SEW + \code{vtype.altfmt} & SEW\\
 Ampliar & \code{vfwcvt}, \code{vfwcvtbf16} & \code{vwsll.vx}\\
-Reduzir & \code{vfncvt[.rod]}, \code{vfncvtbf16[.sat]}, \code{vfncvt[.sat].f.f.q} & \code{vncvt.t.t}\\
+Reduzir & \code{vfncvt}, variantes BF16 e OFP8 & \code{vncvt.t.t}\\
 Comparar, máx., ReLU & \code{vmf*}, \code{vfmin}, \code{vfmax} & \code{vms*}, \code{vmax} (inteiro)\\
 Sinal, classe & \code{vfsgnj*}, \code{vfclass} & \code{vrsub}, \code{vmseq}\\
 Estado & \code{frm}, \code{fflags} & nenhum\\
@@ -157,6 +155,7 @@ Estado & \code{frm}, \code{fflags} & nenhum\\
 \end{column}
 \begin{column}{0.42\textwidth}
 \footnotesize
+\setlength{\tabcolsep}{2pt}
 \begin{tabular}{@{}lrrr@{}}
 \toprule
 Formato & Subnormais & NaN & Especiais\\
@@ -232,11 +231,11 @@ tem FP8: as conversões FP8$\leftrightarrow$FP16 são modeladas.
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Resultado: distribuição do erro \BenchDraft}
+\begin{frame}{Resultado: distribuição do erro}
 \centering
 \begin{tikzpicture}
 \begin{groupplot}[group style={group size=3 by 1, horizontal sep=12mm},
-  width=0.36\textwidth, height=5cm, xmin=0, xmax=100, grid=major, grid style={gray!25},
+  width=0.35\textwidth, height=5cm, xmin=0, xmax=100, grid=major, grid style={gray!25},
   tick label style={font=\scriptsize}, label style={font=\scriptsize},
   title style={font=\small}, legend style={font=\scriptsize, at={(0.02,0.96)}, anchor=north west},
   unbounded coords=jump, no markers, every axis plot/.append style={thick},
@@ -257,7 +256,7 @@ tem FP8: as conversões FP8$\leftrightarrow$FP16 são modeladas.
 \small A curva termina onde as matrizes restantes deram NaN ou $\infty$.
 \end{frame}
 
-\begin{frame}{Resultado: resumo \BenchDraft}
+\begin{frame}{Resultado: resumo}
 \centering
 \begin{tabular}{lrrrr}
 \toprule
@@ -357,8 +356,8 @@ make paper slides
 \begin{itemize}
 \item Takum entra no RVV como formato selecionado por SEW: cinco instruções,
   opcode custom, \textbf{nenhum estado de controle novo}.
-\item Em 8 e 16 bits, Takum sempre deu resultado finito; OFP8 e binary16 falharam em
-  de \BenchInfFPSixteen\% a \BenchInfEFourMThree\% das matrizes, mas são mais precisos onde não estouram.
+\item Em 8 e 16 bits, Takum sempre deu resultado finito; OFP8 e binary16 falharam
+  em \BenchInfFPSixteen\% a \BenchInfEFourMThree\% das matrizes, mas são mais precisos onde não estouram.
 \item Em 32 bits, T32 foi mais preciso que binary32 (\BenchBetterTThirtyTwoFPThirtyTwo{} contra \BenchWorseTThirtyTwoFPThirtyTwo{} matrizes).
 \item Camadas densas: T16 e T32 mantêm a saída em toda a faixa $2^{\pm16}$; E4M3 precisa de fatores de escala.
 \item O \code{vtdot} encurta os laços da SpMV e da camada densa; comparação, ReLU e ampliação usam instruções de inteiro.

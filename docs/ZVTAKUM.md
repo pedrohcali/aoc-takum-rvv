@@ -19,15 +19,17 @@ conta, mas não modela pipeline, latência nem hierarquia de memória.
 - 32 registradores vetoriais de VLEN bits. Padrão: VLEN = 128 (Zvl128b, o mínimo
   da extensão V); o modelo aceita qualquer potência de dois a partir de 64.
 - `vsetvli` define `vl`, SEW ∈ {8, 16, 32, 64} e LMUL ∈ {1, 2, 4, 8}.
-  `VLMAX = VLEN · LMUL / SEW`.
+  `VLMAX = VLEN · LMUL / SEW`. A forma `vsetvli zero, zero` preserva
+  `vl` e exige que VLMAX seja igual antes e depois da troca de tipo.
 - Máscara em `v0`; elementos inativos e de cauda ficam inalterados
   (políticas *mask undisturbed* e *tail undisturbed*).
 - Grupos de registradores precisam estar alinhados ao EMUL; o modelo rejeita
-  grupos desalinhados.
+  grupos desalinhados. [Especificação RVV 1.0](https://github.com/riscvarchive/riscv-v-spec/blob/master/v-spec.adoc#vector-operands)
 
 **SEW seleciona o formato**, exatamente como já seleciona FP16/FP32/FP64 nas
 instruções IEEE: SEW=8 → T8, SEW=16 → T16, SEW=32 → T32. Zvtakum não acrescenta
-nenhum CSR nem bit de `vtype`.
+nenhum CSR nem bit de `vtype`. T64 só aparece como operando largo de redução
+ou estreitamento.
 
 ## 3. Codificação
 
@@ -63,7 +65,8 @@ Todas as instruções operam sobre os elementos `0 ≤ i < vl` ativos.
   as instruções `VDPPT8PT16`/`VDPPT16PT32`/`VDPPT32PT64` propostas por Hunhold
   (2025) para o AVX10.2. Com `vl = 0` nada é escrito. O modo de ablação
   (`vtdot_fused=False`) arredonda cada produto e cada soma parcial para 2·SEW,
-  como faz `vfwmacc` no IEEE; ele existe só para medir o efeito da fusão.
+  para medir o efeito da fusão. O destino da redução ocupa um registrador,
+  independentemente de LMUL.
 - **`vncvt.t.t`:** `vd[i] (SEW) = round(vs2[i] (2·SEW))`, com a mesma política de
   arredondamento e saturação de `TakumFormat.convert`. A conversão de alargamento
   não precisa de instrução própria, porque é exata e equivale a acrescentar
@@ -120,6 +123,10 @@ sem saturação: estouro vira NaN.
 
 Mesmo esqueleto para todos os formatos; muda só o corpo do laço interno.
 Os deslocamentos de coluna são guardados em bytes (pré-processamento único).
+O pseudocódigo e os experimentos usam LMUL = 1. O kernel também aceita LMUL = 2
+e LMUL = 4 quando os grupos cabem em oito registradores. O estreitamento exige
+2·LMUL ≤ 8. Na SpMV esparsa, os índices de 32 bits exigem ainda
+32·LMUL/SEW ≤ 8, o que limita o kernel de 8 bits a LMUL = 2.
 
 ```text
 para cada linha i:                         escalar: lw, lw, sub, addi, beqz

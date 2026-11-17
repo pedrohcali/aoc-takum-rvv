@@ -25,6 +25,19 @@ class VectorMachineTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             m.vsetvli(4, 12)
 
+    def test_keep_vl_trace_and_rejected_configurations(self):
+        m = VectorMachine(128, trace=True)
+        m.vsetvli(3, 16)
+        self.assertEqual(m.vsetvli(None, 32, 2), 3)
+        self.assertEqual(m.trace[-1], "vsetvli zero, zero, e32, m2, tu, mu")
+        for avl, sew, lmul, immediate in ((None, 32, 1, False), (None, 8, 1, False),
+                                          (None, 32, 2, True), (-1, 16, 1, False),
+                                          (32, 16, 1, True)):
+            with self.subTest(avl=avl, sew=sew, lmul=lmul, immediate=immediate):
+                with self.assertRaises(ValueError):
+                    m.vsetvli(avl, sew, lmul, immediate)
+                self.assertEqual((m.vl, m.sew, m.lmul, len(m.trace)), (3, 32, 2, 2))
+
     def test_loads_stores_gather_and_masks(self):
         m = VectorMachine(128)
         data = m.alloc(64)
@@ -158,6 +171,30 @@ class ZvtakumTests(unittest.TestCase):
             m.vncvt_t_t(4, 6)
             self.assertEqual([m.get(4, i, sew) for i in range(vl)],
                              [TakumFormat(2 * sew).convert(w, sew) for w in wide])
+
+    def test_operand_groups_checked_before_execution(self):
+        m = TakumVectorMachine(128)
+        m.vsetvli(3, 16, 2)
+        for instruction, operands in ((m.vtdot_vv, (1, 3, 8)), (m.vtdot_vv, (1, 4, 5)),
+                                      (m.vtdot_vv, (32, 4, 8)), (m.vtdot_vv, (2, -2, 8)),
+                                      (m.vncvt_t_t, (3, 8)), (m.vncvt_t_t, (4, 6)),
+                                      (m.vncvt_t_t, (10, 8)), (m.vncvt_t_t, (0, 8, False)),
+                                      (m.vtadd_vv, (0, 4, 8, False))):
+            with self.subTest(instruction=instruction.__name__, operands=operands):
+                with self.assertRaises(ValueError):
+                    instruction(*operands)
+        self.assertEqual(sum(m.counts.values()), 1)
+        # Reduction destination names one register, even with LMUL > 1.
+        m.vtdot_vv(3, 4, 8)
+        m.vncvt_t_t(8, 8)  # low part of the wide source may overlap
+
+    def test_t64_is_only_a_wide_operand(self):
+        m = TakumVectorMachine(128)
+        m.vsetvli(0, 64)
+        for instruction in (m.vtadd_vv, m.vtsub_vv, m.vtmul_vv, m.vtdot_vv, m.vncvt_t_t):
+            args = (4, 8) if instruction == m.vncvt_t_t else (4, 8, 12)
+            with self.subTest(instruction=instruction.__name__), self.assertRaises(ValueError):
+                instruction(*args)
 
     def test_trace_shows_encoding(self):
         m = TakumVectorMachine(128, trace=True)

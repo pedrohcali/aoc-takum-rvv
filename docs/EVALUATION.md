@@ -38,12 +38,16 @@ longas que VLMAX, estouros, saturação e matriz vazia.
 ## 3. Execução
 
 ```sh
-make fetch     # baixa índice e matrizes para .cache/matrices/ e grava results/matrix-list.csv
-make bench     # roda e resume; pode ser interrompido e retomado
+make fetch     # baixa as matrizes da lista publicada e confere cada SHA-256
+make bench BENCH_DIR=output/repeticao   # diretório novo para repetir a medição
 make bench-synthetic   # versão offline, 64 matrizes sintéticas
 ```
 
-Arquivos gerados em `results/`:
+O benchmark retoma a partir das matrizes já presentes no CSV do diretório
+escolhido. A lista utilizada no artigo está em `results/matrix-list.csv`.
+Para refazer a seleção no catálogo atual do NIST, use `python3 scripts/fetch_matrices.py`.
+
+Arquivos publicados em `results/`:
 
 | Arquivo | Conteúdo |
 |---|---|

@@ -145,9 +145,19 @@ def vector_per_strip(variant: Variant, dense: bool = False) -> int:
     return loads + 3      # vfwmul, vsetvli, vfredosum
 
 
+def kernel_vlmax(variant: Variant, vlen: int, lmul: int, dense: bool) -> int:
+    if vlen < 64 or vlen & (vlen - 1):
+        raise ValueError("VLEN must be a power of two of at least 64 bits")
+    if lmul not in (1, 2, 4):
+        raise ValueError("Kernel narrowing requires 2 * LMUL <= 8")
+    if not dense and 32 * lmul > 8 * variant.sew:
+        raise ValueError("32-bit sparse indices require EMUL <= 8")
+    return vlen * lmul // variant.sew
+
+
 def count_instructions(row_lengths, variant: Variant, vlen: int = 128, lmul: int = 1,
                        dense: bool = False, relu: bool = False) -> dict:
-    vlmax = vlen * lmul // variant.sew
+    vlmax = kernel_vlmax(variant, vlen, lmul, dense)
     strips = sum(-(-n // vlmax) for n in row_lengths)
     rows = len(row_lengths)
     chunks = -(-rows // vlmax)
@@ -166,6 +176,14 @@ def spmv_simulated(csr: CSR, variant: Variant, x=None, vlen: int = 128, lmul: in
 
     dense=True requires a full matrix (CSR.dense) and loads x contiguously;
     relu=True applies max(y, 0) after narrowing."""
+    kernel_vlmax(variant, vlen, lmul, dense)
+    # Keep the documented m1 allocation. Larger groups reuse the index
+    # registers after the gather and the first wide operand for the product.
+    x_reg = 4 + lmul
+    if lmul == 1:
+        index_reg, wide_a, wide_x, product = 12, 6, 8, 10
+    else:
+        index_reg, wide_a, wide_x, product = 16, 16, 24, 16
     if dense and not csr.is_dense():
         raise ValueError("dense=True needs a matrix built with CSR.dense")
     machine = TakumVectorMachine(vlen, trace, vtdot_fused=variant.fused)
@@ -200,22 +218,22 @@ def spmv_simulated(csr: CSR, variant: Variant, x=None, vlen: int = 128, lmul: in
             vl = machine.vsetvli(n, s, lmul)
             machine.vle(4, vals + k * size, s)
             if dense:
-                machine.vle(5, x_address + (k - csr.row_ptr[i]) * size, s, rs1="a2")
+                machine.vle(x_reg, x_address + (k - csr.row_ptr[i]) * size, s, rs1="a2")
             else:
-                machine.vle(12, offsets + k * 4, 32, rs1="a2")
-                machine.vluxei(5, x_address, 12, 32)
+                machine.vle(index_reg, offsets + k * 4, 32, rs1="a2")
+                machine.vluxei(x_reg, x_address, index_reg, 32)
             if variant.family == "takum":
-                machine.vtdot_vv(2, 4, 5)
+                machine.vtdot_vv(2, 4, x_reg)
             elif s == 8:
-                machine.vfwcvt_f_f_v(6, 4)
-                machine.vfwcvt_f_f_v(8, 5)
+                machine.vfwcvt_f_f_v(wide_a, 4)
+                machine.vfwcvt_f_f_v(wide_x, x_reg)
                 machine.vsetvli(None, 16, 2 * lmul)
-                machine.vfmul_vv(10, 6, 8)
-                machine.vfredosum_vs(2, 10, 2)
+                machine.vfmul_vv(product, wide_a, wide_x)
+                machine.vfredosum_vs(2, product, 2)
             else:
-                machine.vfwmul_vv(6, 4, 5)
+                machine.vfwmul_vv(wide_a, 4, x_reg)
                 machine.vsetvli(None, 2 * s, 2 * lmul)
-                machine.vfredosum_vs(2, 6, 2)
+                machine.vfredosum_vs(2, wide_a, 2)
             if dense:
                 strip_scalar = (("sub", "a5, a5, t0"), ("slli", "t1, t0, log2(sew/8)"), ("add", "a1, a1, t1"),
                                 ("add", "a2, a2, t1"), ("bnez", "a5, 1b"))
@@ -234,13 +252,13 @@ def spmv_simulated(csr: CSR, variant: Variant, x=None, vlen: int = 128, lmul: in
     remaining, i = csr.n_rows, 0
     while remaining > 0:
         vl = machine.vsetvli(remaining, s, lmul)
-        machine.vle(6, y_wide + i * 2 * size, 2 * s, rs1="a3")
+        machine.vle(wide_a, y_wide + i * 2 * size, 2 * s, rs1="a3")
         if variant.family == "takum":
-            machine.vncvt_t_t(4, 6)
+            machine.vncvt_t_t(4, wide_a)
             if relu:
                 machine.vmax_vx(4, 4)
         else:
-            machine.vfncvt_f_f_w(4, 6)
+            machine.vfncvt_f_f_w(4, wide_a)
             if relu:
                 machine.vfmax_vf(4, 4)
         machine.vse(4, y_address + i * size, s, rs1="a7")
@@ -295,12 +313,13 @@ def quantize_values(values, variant: Variant):
     return out, stats
 
 
-def spmv_fast(csr: CSR, variant: Variant, a_values, x_values, vlen: int = 128, lmul: int = 1):
+def spmv_fast(csr: CSR, variant: Variant, a_values, x_values, vlen: int = 128, lmul: int = 1,
+              *, dense: bool = False):
     """Same arithmetic as spmv_simulated on already quantized A and x values."""
+    vlmax = kernel_vlmax(variant, vlen, lmul, dense)
     y = []
     if variant.family == "takum":
         acc_fmt, s = TakumFormat(2 * variant.sew), variant.sew
-        vlmax = vlen * lmul // s
         for i in range(csr.n_rows):
             start, end = csr.row_ptr[i], csr.row_ptr[i + 1]
             total = Fraction(0)

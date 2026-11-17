@@ -24,12 +24,8 @@
 \usepackage{etoolbox}
 \patchcmd{\abstract}{---}{: }{}{\errmessage{Abstract punctuation patch failed}}
 \patchcmd{\IEEEkeywords}{---}{: }{}{\errmessage{Keywords punctuation patch failed}}
-% Benchmark numbers come from scripts/summarize_benchmark.py. Until the
-% real benchmark run exists, the synthetic offline run is used and marked.
-\IfFileExists{../results/spmv-macros.tex}{%
-  \input{../results/spmv-macros.tex}\def\BenchCDF{../results/spmv-cdf.csv}\def\BenchDraft{}}{%
-  \input{../results/synthetic-macros.tex}\def\BenchCDF{../results/synthetic-cdf.csv}%
-  \def\BenchDraft{\textcolor{red}{[DRAFT: synthetic matrices]} }}
+\input{../results/spmv-macros.tex}
+\def\BenchCDF{../results/spmv-cdf.csv}
 \input{../results/mlp-macros.tex}
 \input{../results/isa-macros.tex}
 \hypersetup{pdftitle={Takum Arithmetic in the RISC-V Vector Extension},
@@ -67,7 +63,7 @@ Belo Horizonte, Brazil}
 \maketitle
 
 \begin{abstract}
-\BenchDraft Takum is a tapered-precision number format with one decoding scheme
+Takum is a tapered-precision number format with one decoding scheme
 for every bit width. We study it as the element type of a simplified RISC-V
 vector extension. An exact functional model implements linear takums at 8, 16,
 32, and 64 bits and five proposed instructions: element-wise add, subtract, and
@@ -217,7 +213,7 @@ Instruction & funct6 & Semantics\\
 \node[above=0pt of vd, font=\tiny] {11:7};
 \node[above=0pt of op, font=\tiny] {custom-2 (6:0)};
 \node[box, text width=17mm, below=5mm of f6.south east, anchor=north] (src)
-  {$v_{s2}[i]\cdot v_{s1}[i]$\\exact, SEW bits};
+  {$v_{s2}[i]\cdot v_{s1}[i]$\\SEW-bit inputs};
 \node[box, text width=17mm, right=4mm of src] (sum) {$v_d[0]+\sum_i$\\exact};
 \node[box, text width=17mm, right=4mm of sum] (rd) {$\mathrm{rd}_2$: one\\rounding to 2SEW};
 \node[box, right=4mm of rd] (out) {$v_d[0]$\\2SEW};
@@ -227,7 +223,7 @@ Instruction & funct6 & Semantics\\
 \end{tikzpicture}
 \caption{Encoding of \code{vtdot.vv} (top) and its data flow (bottom). The
 stepwise ablation instead applies $\mathrm{rd}_2$ after every product and every
-partial sum, as \code{vfwmacc} does.}
+partial sum.}
 \label{fig:vtdot}
 \end{figure}
 
@@ -373,7 +369,7 @@ FP8 training relies on~\cite{fp8dl}. The error is that of the network output
 against binary128, and an error of 100\% or more counts as a lost output.
 
 \emph{Ablation.} A variant of \code{vtdot.vv} that rounds every product and
-partial sum to $2\mathrm{SEW}$, like \code{vfwmacc}, separates the effect of the
+partial sum to $2\mathrm{SEW}$ separates the effect of the
 format from that of the exact accumulation.
 
 \section{Results and Discussion}
@@ -398,7 +394,7 @@ format from that of the exact accumulation.
 \addplot table[x=share, y=FP32, col sep=comma] {\BenchCDF}; \addlegendentry{binary32}
 \end{groupplot}
 \end{tikzpicture}
-\caption{\BenchDraft Cumulative distribution of the SpMV relative error against
+\caption{Cumulative distribution of the SpMV relative error against
 binary128, by format. A curve ends where the remaining matrices produced NaN or
 an infinity; smaller errors, including exact results, are drawn at the
 bottom of the axis.}
@@ -406,7 +402,7 @@ bottom of the axis.}
 \end{figure}
 
 \begin{table}[t]
-\caption{\BenchDraft SpMV results per format (\BenchMatrices{} matrices).
+\caption{SpMV results per format (\BenchMatrices{} matrices).
 Median $\log_{10}$ of the relative error, share of matrices with error below
 100\%, share with NaN or infinity, and vector instructions per nonzero}
 \label{tab:results}
@@ -558,7 +554,8 @@ variant, and trained networks.
 \section*{Reproducibility}
 The repository contains the model, tests, scripts, and results.
 \code{make verify} repeats the phase~1 checks and the test suite, \code{make
-fetch} and \code{make bench} download the matrices and rerun the benchmark
+fetch} verifies the pinned matrices, and \code{make bench} with
+\code{BENCH\_DIR} set to an empty directory reruns the benchmark
 (about three minutes on 16 cores), \code{make mlp} reruns the dense layers
 (about four minutes), \code{make isa} recounts the encodings, and
 \code{make paper} builds this paper from the result files. Source:

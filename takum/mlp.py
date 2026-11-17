@@ -64,7 +64,7 @@ def mlp_fast(weights, x, variant: Variant, vlen: int = 128, lmul: int = 1, quant
             events += wstats.saturated + wstats.overflow + wstats.flushed_to_zero
         else:
             a = quantized_weights[index]
-        xq = spmv_fast(W, variant, a, xq, vlen, lmul)
+        xq = spmv_fast(W, variant, a, xq, vlen, lmul, dense=True)
         if index < len(weights) - 1:
             xq = relu(xq, variant)
     return xq, events

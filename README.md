@@ -45,7 +45,7 @@ python3 -m takum vector-demo
 
 ```sh
 make fetch            # baixa as matrizes do NIST Matrix Market (até 50 mil não nulos)
-make bench            # roda o benchmark e gera os resumos em results/
+make bench BENCH_DIR=output/repeticao  # repete a medição nessa pasta
 make bench-synthetic  # versão offline, com matrizes sintéticas
 make mlp              # camadas densas com ReLU, 64 redes em 9 escalas (~4 min)
 make isa              # contagem dos padrões especiais de cada formato
@@ -59,7 +59,7 @@ e os slides automaticamente.
 ```sh
 make test       # testes locais
 make reference  # comparação com libtakum
-make verify     # testes e geração dos resultados
+make verify     # suíte completa, referência C e exemplos escalares
 ```
 
 A comparação com libtakum requer Git, um compilador C99 e internet na primeira
@@ -83,7 +83,10 @@ patch em Linux. A implementação e os critérios de validação são descritos 
 
 Para compilar artigos e slides, instale [Tectonic](https://tectonic-typesetting.github.io/)
 e execute `make paper slides`. Para gerar o ZIP da entrega, execute `make package`.
-O pacote contém os arquivos acima. Materiais de consulta e configuração do GitHub
+O arquivo é `output/entrega-final.zip`. Ele inclui o artigo
+(`output/pdf/final.pdf`), os slides (`output/pdf/final-slides.pdf`), o código,
+os testes, a documentação e os dados usados nos gráficos. O [mapa da entrega](docs/DELIVERY-FINAL.md)
+indica onde verificar cada requisito. Materiais de consulta e configuração do GitHub
 ficam apenas no repositório.
 
 ## Referências

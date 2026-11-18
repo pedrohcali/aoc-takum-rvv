@@ -5,7 +5,7 @@ funct3 | vd | opcode) under the custom-2 major opcode, which RISC-V reserves
 for non-standard extensions, so they cannot collide with current or future
 standard encodings. Each funct6 repeats the one of the IEEE counterpart, and
 funct3 is OPFVV. SEW selects T8, T16 or T32, exactly as it selects the IEEE
-width for the F/V instructions; no CSR state is added. See docs/ZVTAKUM.md.
+width for the F/V instructions; no CSR state is added.
 """
 
 from .alu import TakumALU

@@ -7,9 +7,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "output" / "entrega-aoc.zip"
 FILES = """
-README.md Makefile pyproject.toml
-docs/DECISIONS.md
-docs/EVALUATION.md docs/SPECIFICATION.md docs/VALIDATION.md docs/ZVTAKUM.md
+README.md DECISIONS.md Makefile pyproject.toml
 paper/final.tex paper/IEEEtran.cls slides/final-slides.tex
 output/pdf/final.pdf output/pdf/final-slides.pdf
 scripts/libtakum-portable.patch scripts/libtakum-LICENSE

@@ -40,13 +40,25 @@ O primeiro comando baixa as matrizes listadas em `results/matrix-list.csv` e
 confere seus hashes. O segundo grava a nova medição na pasta indicada. O
 terceiro repete o experimento das redes nas nove escalas de entrada.
 
-Os critérios de arredondamento, a semântica das instruções e o método de
-avaliação estão na [especificação do formato](docs/SPECIFICATION.md), na
-[descrição de Zvtakum](docs/ZVTAKUM.md) e nas [notas dos experimentos](docs/EVALUATION.md).
-O [registro de decisões](docs/DECISIONS.md) explica as escolhas de projeto.
+O arredondamento, a semântica das instruções e o método de avaliação estão
+descritos no artigo. O [registro de decisões](DECISIONS.md) lista as escolhas de
+projeto, as alternativas e os motivos.
 
 Os PDFs já estão em `output/pdf/`. Com Tectonic instalado, `make package`
 recompila o artigo e os slides e gera `output/entrega-aoc.zip`.
+
+## Organização
+
+- `takum/`: formato, ALU, formatos IEEE, modelo vetorial RVV, Zvtakum, SpMV,
+  camada densa e interface de linha de comando.
+- `tests/`: testes automáticos, incluindo todos os pares T8 contra um oráculo
+  independente.
+- `scripts/`: validação contra a libtakum, download das matrizes, benchmark,
+  redes, análise estática e empacotamento.
+- `results/`: resultados usados no artigo e nos slides. `results/ci/` guarda os
+  relatórios da comparação com a libtakum feita pelo CI em Linux e macOS.
+- `paper/`, `slides/`: fontes LaTeX do artigo e da apresentação.
+- `output/pdf/`: PDFs compilados.
 
 ## Integrantes
 

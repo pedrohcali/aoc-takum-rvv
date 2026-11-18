@@ -5,25 +5,21 @@ from tempfile import NamedTemporaryFile
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = ROOT / "output" / "entrega-final.zip"
+OUTPUT = ROOT / "output" / "entrega-aoc.zip"
 FILES = """
 README.md Makefile pyproject.toml
-docs/DELIVERY-FINAL.md docs/DELIVERY-1.md docs/DECISIONS.md docs/DEMO.md
+docs/DECISIONS.md
 docs/EVALUATION.md docs/SPECIFICATION.md docs/VALIDATION.md docs/ZVTAKUM.md
-paper/final.tex paper/phase1.tex paper/IEEEtran.cls slides/final-slides.tex
-output/pdf/final.pdf output/pdf/final-slides.pdf output/pdf/phase1.pdf
+paper/final.tex paper/IEEEtran.cls slides/final-slides.tex
+output/pdf/final.pdf output/pdf/final-slides.pdf
 scripts/libtakum-portable.patch scripts/libtakum-LICENSE
 results/unit-tests.json results/reference-validation.json results/demo.json results/t8-values.csv
 results/reference-upstream-linux.json results/reference-upstream-macos.json
-results/ci/README.md results/ci/reference-linux.json results/ci/reference-macos.json
 results/matrix-list.csv results/benchmark-run.json results/benchmark-skipped.csv
 results/spmv-errors.csv results/spmv-cdf.csv results/spmv-conversion-cdf.csv
 results/spmv-summary.json results/spmv-macros.tex
 results/mlp-errors.csv results/mlp-curve.csv results/mlp-summary.json results/mlp-run.json
 results/mlp-macros.tex results/isa-encodings.csv results/isa-macros.tex
-results/synthetic-run.json results/synthetic-skipped.csv results/synthetic-errors.csv
-results/synthetic-summary.json results/synthetic-cdf.csv results/synthetic-conversion-cdf.csv
-results/synthetic-macros.tex
 """.split()
 
 

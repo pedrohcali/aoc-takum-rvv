@@ -56,7 +56,7 @@ Arquivos publicados em `results/`:
 | `spmv-cdf.csv`, `spmv-conversion-cdf.csv` | Distribuições usadas no artigo e nos slides |
 | `spmv-summary.json`, `spmv-macros.tex` | Números do texto do artigo e dos slides |
 | `benchmark-run.json`, `benchmark-skipped.csv` | Metadados da execução e matrizes que não puderam ser lidas |
-| `synthetic-*` | Mesmo conjunto para a rodada sintética offline |
+| `synthetic-*` | Gerados por `make bench-synthetic` para o experimento offline |
 
 Custo medido: cerca de 1,1 ms de CPU por não nulo para os 10 formatos
 (7 + 3 da ablação), paralelizado por matriz; a rodada completa levou 3 minutos
@@ -180,3 +180,11 @@ cheia, com x lido por `vle` contíguo e a ReLU depois do estreitamento
   30% menos que binary16 e 32% menos que binary32 (26%, 16% e 17% no total).
 - **Limite:** redes aleatórias, não treinadas; o resultado descreve o erro
   aritmético, não a acurácia de um modelo.
+
+## Repetição no Mac ARM
+
+Em 17/11/2026, a repetição no Mac usou diretórios vazios e os mesmos parâmetros da execução Linux. Conferimos as 3.580 linhas de SpMV (358 matrizes × 10 variantes)
+e as 5.760 linhas das redes (64 redes × 9 escalas × 10 variantes). As contagens
+de instruções e eventos de faixa coincidiram. A maior diferença absoluta entre
+os erros em escala log10 foi inferior a 8 × 10⁻¹⁵ na SpMV e a 3 × 10⁻⁹ nas
+redes. Os valores arredondados usados no artigo e nos slides coincidiram.

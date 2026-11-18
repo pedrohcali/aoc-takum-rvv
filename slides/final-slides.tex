@@ -342,14 +342,23 @@ O ganho do \code{vtdot} aqui é em instruções.
 
 \begin{frame}[fragile]{Demonstração}
 \begin{verbatim}
-python3 -m takum vector-demo   # 5 instruções, rastro, codificação
-python3 -m takum add --width 8 1.5 2.25
-make test                      # suíte completa de testes
-make bench                     # benchmark, retomável
-make mlp                       # camadas densas, varredura de escala
-make isa                       # contagem de padrões especiais
-make paper slides
+python3 -m takum vector-demo
 \end{verbatim}
+
+Na camada densa $4\times4$, a saída exata após a ReLU é
+$(6{,}25,\ 0,\ 7,\ 0)$.
+
+\medskip
+\centering
+\begin{tabular}{lcr}
+\toprule
+Formato & Saída & Instruções vetoriais \\
+\midrule
+T8   & $(6,\ 0,\ 7,\ 0)$ & 37 \\
+E4M3 & $(6,\ 0,\ 7,\ 0)$ & 53 \\
+T16  & $(6{,}25,\ 0,\ 7,\ 0)$ & 37 \\
+\bottomrule
+\end{tabular}
 \end{frame}
 
 \begin{frame}{Conclusão}

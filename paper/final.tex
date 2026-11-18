@@ -63,33 +63,21 @@ Belo Horizonte, Brazil}
 \maketitle
 
 \begin{abstract}
-Takum is a tapered-precision number format with one decoding scheme
-for every bit width. We study it as the element type of a simplified RISC-V
-vector extension. An exact functional model implements linear takums at 8, 16,
-32, and 64 bits and five proposed instructions: element-wise add, subtract, and
-multiply, a dot product that accumulates exactly and rounds once to twice the
-element width, and a narrowing conversion. The instructions reuse the RVV
-encoding layout under a custom opcode and need no new control state: the element
-width selects the format, and saturation and the single NaR value replace the
-rounding mode and exception flags of IEEE 754. We compare a CSR sparse
-matrix-vector kernel in takum and in OFP8, binary16, and binary32 over
-\BenchMatrices{} real matrices from the Matrix Market, measuring the relative
-error against a binary128 reference and the dynamic instruction count. Takum
-results were always finite, while E4M3, E5M2, and binary16 produced a NaN or an
-infinity for \BenchInfEFourMThree\%, \BenchInfEFiveMTwo\%, and
-\BenchInfFPSixteen\% of the matrices. Where the IEEE formats stay in range they
-are usually more accurate at 8 and 16 bits; at 32 bits takum is more accurate
-for \BenchBetterTThirtyTwoFPThirtyTwo{} matrices and less for
-\BenchWorseTThirtyTwoFPThirtyTwo. Dense neural network layers evaluated over
-input scales from $2^{-16}$ to $2^{16}$ show the same trade-off: E4M3 lost the
-output at \the\numexpr 9-\MlpUsableEFourMThree\relax{} of nine scales and
-binary16 at the largest, while T16 and T32 kept it at every scale. The fused
-dot product removes \BenchVecReductionFPSixteen\% to
-\BenchVecReductionEFourMThree\% of the vector instructions of the SpMV kernel
-and \MlpVecReductionFPSixteen\% to \MlpVecReductionEFourMThree\% of the dense
-kernel, and an exhaustive count of encodings shows one takum decoding rule with
-two special patterns where each IEEE format has its own field layout,
-subnormals, and NaNs.
+We implemented five instructions for linear takum arithmetic in a functional
+RISC-V vector simulator. The element width selects the format (T8, T16, or T32).
+The dot product accumulates exactly and rounds once to twice the element width.
+We compared takum and floating-point kernels on \BenchMatrices{} sparse
+matrices from the Matrix Market, using binary128 as the reference. Every takum
+result was finite. E4M3 produced a nonfinite result on \BenchInfEFourMThree\%
+of the matrices, but it had a smaller error than T8 on
+\BenchWorseTEightEFourMThree{} of the \BenchInRangeTEightEFourMThree{} matrices
+where both were finite. At 32 bits, T32 had a smaller error than binary32 on
+\BenchBetterTThirtyTwoFPThirtyTwo{} matrices and a larger error on
+\BenchWorseTThirtyTwoFPThirtyTwo{}. The takum kernel used
+\BenchVecReductionFPSixteen\% fewer vector instructions than the binary16
+kernel. In a second experiment with dense neural network layers, the reduction
+was \MlpVecReductionFPSixteen\%. These counts measure instructions executed
+by the simulator. They do not measure execution time on hardware.
 \end{abstract}
 \begin{IEEEkeywords}
 Takum, tapered precision, RISC-V vector extension, SpMV, functional simulation
@@ -108,18 +96,12 @@ sparse matrices from the SuiteSparse collection and proposed a smaller
 instruction set built on them, naming RISC-V vector extensions as future
 work~\cite{simd}.
 
-This paper takes up that suggestion for the RISC-V Vector extension
-(RVV)~\cite{rvv}. The project had three milestones: an exact scalar model of
-linear takums, a vector extension with five instructions (Zvtakum), and an
-experimental comparison with IEEE formats on sparse matrix-vector
-multiplication (SpMV). Our contributions are (i) an encoding and semantics for
-the five instructions that adds no control state to the ISA, (ii) a functional
-vector model in which the takum and IEEE kernels run under one instruction
-accounting, (iii) an evaluation of accuracy and instruction count on SpMV over
-real sparse matrices and on dense neural network layers, and (iv) a static
-count of the instructions and decoder cases that each approach needs. We make
-no claims about cycles,
-area, or power.
+We study how the choice of number format changes the inner loop of a RISC-V
+Vector (RVV) kernel~\cite{rvv}. For a sparse matrix, both formats must gather
+the same vector entries. They differ in how they form and accumulate the
+products. We compare the two instruction sequences on the same matrices, then
+repeat the comparison on dense layers, where the inputs are contiguous. We
+also examine which instructions and control registers each format requires.
 
 \section{Related Work}
 Posits~\cite{posit} introduced tapered precision as an alternative to IEEE 754.

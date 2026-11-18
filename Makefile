@@ -45,8 +45,6 @@ summary:
 	$(PYTHON) scripts/run_mlp.py --summarize-only
 
 paper: final-paper
-	mkdir -p output/pdf
-	cd paper && tectonic --outdir ../output/pdf phase1.tex
 
 final-paper:
 	mkdir -p output/pdf
